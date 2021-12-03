@@ -1,0 +1,2379 @@
+      *//START-PROGRAM                                                  00000100
+      *----------------------------------------------------------------*00000100
+      *             IDENTIFICATION DIVISION                            *00000200
+      *----------------------------------------------------------------*00000300
+       IDENTIFICATION DIVISION.                                         00000400
+       PROGRAM-ID. KN2CBMPA.                                            00000500
+       AUTHOR.     BBVA  - NELSON MONCADA .                             00000600
+       DATE-WRITTEN. 2019-11-10.                                        00000700
+      ******************************************************************00000800
+      *    DESCRIPCION : PROGRAMA PARA LLAMAR LOS LISTADORES DE DATOS  *00000900
+      *                  DE POSICION GLOBAL.                           *00001000
+      ******************************************************************00001800
+      *        L O G    D E   M O D I F I C A C I O N E S              *
+      *----------------------------------------------------------------*
+      *  AUTOR   FECHA          DESCRIPCION                            *
+      * ------- -------- --------------------------------------------- *
+      * BVA01   20-03-20 SE AJUSTA MUESTRE EL SALDO TC AMPARADA
+      * COL01            GP-16724-01
+      ******************************************************************
+      *                 ENVIRONMENT DIVISION                           *00002900
+      *----------------------------------------------------------------*00003000
+       ENVIRONMENT DIVISION.                                            00003100
+       CONFIGURATION SECTION.                                           00003200
+       SOURCE-COMPUTER.                                                 00003300
+           IBM-3090.                                                    00003400
+       OBJECT-COMPUTER.                                                 00003500
+           IBM-3090.                                                    00003600
+      *----------------------------------------------------------------*00003700
+      *                  DATA DIVISION                                 *00003800
+      *----------------------------------------------------------------*00003900
+       DATA DIVISION.                                                   00004000
+       WORKING-STORAGE SECTION.                                         00004100
+      *----------------------------------------------------------------*
+      * DEFINICION DE VALIABLES APLICATIVAS                            *
+      *----------------------------------------------------------------*
+       01 WS-VARIABLES.
+          05 WS-CONT                        PIC 9(02) VALUE ZEROS.
+          05 WS-CONT-FD                     PIC 9(03) VALUE ZEROS.
+          05 WS-CONT-P                      PIC 9(02) VALUE ZEROS.
+          05 WS-TEMPORAL                    PIC X(20) VALUE ZEROS.
+          05 WS-DIA-HABIL                   PIC X(01) VALUE SPACES.
+          05 WS-TIP-FONDO                   PIC X(01) VALUE SPACES.
+          05 WS-HORA.
+             10 WS-HORA-OPERA               PIC X(06) VALUE SPACES.
+             10 WS-HORA-OPERA2              PIC 9(06) VALUE ZEROS.
+          05 WS-UPDATE-APR.
+             10 WS-EST-PROD                 PIC X(01) VALUE SPACES.
+             10 WS-NUM-PROD                 PIC X(20) VALUE SPACES.
+             10 WS-TIP-PROD                 PIC X(02) VALUE SPACES.
+             10 WS-DIVISA                   PIC X(03) VALUE SPACES.
+          05 WS-PRG-LISTADO                 PIC X(08) VALUE SPACES.
+          05 WS-ITEM-FD                     PIC S9(04) COMP VALUE ZEROS.
+          05 WS-ITEM-CDT                    PIC S9(04) COMP VALUE ZEROS.
+      *
+          05 W001-COUNT-PROD                PIC S9(3) COMP.
+          05 WS-PRODUCTOS                   PIC 9(03) VALUE ZEROES.
+          05 WS-TOTAL-ENV                   PIC 9(03) VALUE ZEROES.
+          05 WS-CLIEN-TRZ                   PIC X(08) VALUE SPACES.
+          05 WS-INDIC-LOG                   PIC X(01) VALUE SPACES.
+          05 WS-INDIC-TRZ                   PIC X(01) VALUE SPACES.
+          05 WS-FONDO-01                    PIC X(20) VALUE SPACES.
+          05 WS-FONDO-02                    PIC X(20) VALUE SPACES.
+          05 WS-LIS-CTAS                    PIC 9(01) VALUE ZEROES.
+          05 WS-LIS-FNDS                    PIC 9(01) VALUE ZEROES.
+          05 WS-LIS-CDTS                    PIC 9(01) VALUE ZEROES.
+          05 WS-LIS-PRES                    PIC 9(01) VALUE ZEROES.
+          05 WS-LIS-TARJ                    PIC 9(01) VALUE ZEROES.
+          05 WS-LIS-ADNS                    PIC 9(01) VALUE ZEROES.
+      ******************************************************************
+      *                  TABLA DATOS DE CONSULTA                       *
+      ******************************************************************
+       01 WS-TABLA-CONSULTA.
+          05 WS-INFO-CONS                   OCCURS 100 TIMES.
+             10 WS-SUBPRO                   PIC X(02) VALUE SPACES.
+             10 WS-NUMPRO                   PIC X(35) VALUE SPACES.
+             10 WS-SEUDON                   PIC X(20) VALUE SPACES.
+             10 WS-FAVORI                   PIC X(01) VALUE SPACES.
+             10 WS-ESTADO-PROD              PIC X(02) VALUE SPACES.
+             10 WS-DESCRIP                  PIC X(30) VALUE SPACES.
+      *
+          05 WS-DATOS-SALIDA.
+             10 WS-INDICE                   PIC X(003).
+             10 WS-NUMERO-FONDO             PIC X(020).
+             10 WS-TIPO-FONDO               PIC X(002).
+             10 WS-DESCRIPCION              PIC X(030).
+             10 WS-DIVISA-FD                PIC X(003).
+             10 WS-MONTO-ACT                PIC S9(15)V99.
+             10 WS-ALIAS                    PIC X(020).
+             10 WS-FAVORITO                 PIC X(001).
+             10 WS-ESTADO                   PIC X(001).
+             10 WS-CTA-ASOCIADA             PIC X(020).
+             10 WS-DISPO-CTA                PIC S9(15)V99.
+             10 WS-HORARIO                  PIC X(008).                 00010501
+             10 WS-HORARIO2                 PIC X(008).
+             10 WS-IND-ABIERTO              PIC X(001).                 00010501
+          05 WS-DATOS-SALIDA-CDT.
+             10 WS-INDICE-CDT               PIC 9(003).
+             10 WS-NUMERO-CUENTA-CDT        PIC X(020).
+             10 WS-TIPO-CUENTA-CDT          PIC X(002).
+             10 WS-DESCRIPCION-CDT          PIC X(030).
+             10 WS-FECH-VENCIMI-CDT         PIC X(010).
+             10 WS-ESTADO-CDT               PIC X(001).
+             10 WS-SALDO-ACTUAL-CDT         PIC S9(15)V99.
+             10 WS-SALDO-DISPON-CDT         PIC S9(15)V99.
+             10 WS-DIVISA-CDT               PIC X(003).
+             10 WS-ALIAS-CDT                PIC X(020).
+             10 WS-FAVORITO-CDT             PIC X(001).
+      *-------------------------- CONSTANTES --------------------------*
+       01 WS-CONSTANTES.
+          05 RUT-PE9C1000                   PIC X(08) VALUE 'PE9C1000'.
+          05 RUT-RV7CPRM0                   PIC X(08) VALUE 'RV7CPRM0'.
+          05 RUT-KN7CBM50                   PIC X(08) VALUE 'KN7CBM50'.
+          05 RUT-KN7CB095                   PIC X(08) VALUE 'KN7CB095'.
+          05 RUT-KN7CBM80                   PIC X(08) VALUE 'KN7CBM80'.
+          05 RUT-TC2C1200                   PIC X(08) VALUE 'TC2C1200'.
+          05 CON-CEROS                      PIC X(16) VALUE
+                                                    '0000000000000000'.
+          05 PGM-KN2CBM01                   PIC X(08) VALUE 'KN2CBM01'.
+          05 PGM-KN2CBMPC                   PIC X(08) VALUE 'KN2CBMPC'.
+          05 PGM-KN2CBM03                   PIC X(08) VALUE 'KN2CBM03'.
+          05 PGM-KN2CBM04                   PIC X(08) VALUE 'KN2CBM04'.
+          05 PGM-KN2CBM05                   PIC X(08) VALUE 'KN2CBM05'.
+          05 PGM-KN2CBMAN                   PIC X(08) VALUE 'KN2CBMAN'.
+          05 RUT-BG7CDPE0                   PIC X(08) VALUE 'BG7CDPE0'.
+      *
+          05 PGM-KN2CBAP1                   PIC X(08) VALUE 'KN2CBAP1'.
+          05 PGM-KN2CBMCT                   PIC X(08) VALUE 'KN2CBMCT'.
+          05 PGM-KN2CBMTC                   PIC X(08) VALUE 'KN2CBMTC'.
+          05 PGM-KN2CBMFD                   PIC X(08) VALUE 'KN2CBMFD'.
+          05 PGM-KN2CBMPR                   PIC X(08) VALUE 'KN2CBMPR'.
+          05 PGM-KN2CBMCD                   PIC X(08) VALUE 'KN2CBMCD'.
+      *
+          05 WS-DE                          PIC X(02) VALUE 'DE'.       00007000
+          05 CON-KNB4                       PIC X(04) VALUE 'KNB4'.
+          05 CTE-RETORNO-OK                 PIC X(02) VALUE '00'.
+          05 CTE-ESPACIO                    PIC X(01) VALUE SPACES.
+      *-------------------------- SWITCHES ----------------------------*
+       01 SW-SWITCHES.
+          05 SW-ESCRIBE-TS                  PIC X(01) VALUE 'N'.
+             88 NO-ESCRIBE                            VALUE 'N'.
+             88 SI-ESCRIBE                            VALUE 'S'.
+          05 SW-PRODUCTO                    PIC X(01) VALUE 'C'.
+             88 PD-CUENTAS                            VALUE 'C'.
+             88 PD-CDTS                               VALUE 'A'.
+             88 PD-CREDITOS                           VALUE 'P'.
+             88 PD-TARJETAS                           VALUE 'T'.
+             88 PD-FONDOS                             VALUE 'F'.
+             88 PD-ADN                                VALUE 'N'.
+          05 SW-MAS-DATOS                   PIC X(01) VALUE 'S'.
+             88 SI-M-DATOS                            VALUE 'S'.
+             88 NO-M-DATOS                            VALUE 'N'.
+          05 SW-DATOS-FD                    PIC X(01) VALUE 'S'.
+             88 SI-DATO-FD                            VALUE 'S'.
+             88 NO-DATO-FD                            VALUE 'N'.
+          05 SW-DATOS-CDT                   PIC X(01) VALUE 'S'.
+             88 SI-DATO-CDT                           VALUE 'S'.
+             88 NO-DATO-CDT                           VALUE 'N'.
+      *----------------------------------------------------------------*00014100
+      *              VARIABLES WORK PARA ESCRIBIR TRAZAS               *00014200
+      *----------------------------------------------------------------*00014300
+       01 WS-WORK-TRAZA.
+          05 WS-NOMBRE-COLA-TS              PIC X(08)  VALUE SPACES.
+          05 WS-LONG-TS                     PIC S9(4)  COMP.
+          05 WS-LONG-TS-RES                 PIC S9(4)  COMP.
+          05 WS-LONG-TS-ERR                 PIC S9(4)  COMP.
+          05 WS-CONTENIDO-TS.
+             10 WS-CONTENIDO-IND            PIC X(04)  VALUE SPACES.
+             10 WS-CONTENIDO-FILL           PIC X(01)  VALUE '|'.
+             10 WS-CONTENIDO-TOT            PIC X(532) VALUE SPACES.
+      *
+      *----------------------------------------------------------------*
+       01 WS-ESTRUCTURA-TS.
+          05 WS-DATOS-SAL-TS.
+             10 KNPG-TIPO-PRODUCTO          PIC X(02) VALUE SPACES.
+             10 KNPG-TIPO-CONTRATO          PIC X(20) VALUE SPACES.
+             10 KNPG-NUM-CONTRATO           PIC X(20) VALUE SPACES.
+             10 KNPG-ESTADO                 PIC X(01) VALUE SPACES.
+             10 KNPG-SALDO-PUNTUAL          PIC -ZZZ,ZZZ,ZZZ,ZZ9.99.
+             10 KNPG-SALDO-DISPONIBLE       PIC -ZZZ,ZZZ,ZZZ,ZZ9.99.
+             10 KNPG-SALDO-CANJE            PIC -ZZZ,ZZZ,ZZZ,ZZ9.99.
+             10 KNPG-DIVISA                 PIC X(03) VALUE SPACES.
+             10 KNPG-ALIAS                  PIC X(20) VALUE SPACES.
+             10 KNPG-IND-FAVORITO           PIC X(01) VALUE SPACES.
+             10 KNPG-NUM-PRODUCTO           PIC X(20) VALUE SPACES.
+             10 KNPG-NOMB-FRANQUICIA        PIC X(20) VALUE SPACES.
+          05 WS-DATOS-SAL-ER.
+             10 KNPG-COD-ERR1               PIC X(02) VALUE SPACES.
+             10 KNPG-COD-ERR2               PIC X(04) VALUE SPACES.
+             10 KNPG-COD-ERR3               PIC X(09) VALUE SPACES.
+             10 KNPG-DES-ERR1               PIC X(20) VALUE SPACES.
+             10 KNPG-DES-ERR2               PIC X(20) VALUE SPACES.
+             10 KNPG-ERR-TPRO               PIC X(02) VALUE SPACES.
+             10 KNPG-ERR-NPRO               PIC X(20) VALUE SPACES.
+             10 KNPG-ERR-PRGL               PIC X(08) VALUE SPACES.
+             10 KNPG-ERR-CCLI               PIC X(08) VALUE SPACES.
+      *----------------------------------------------------------------*
+      * COPY DE COMUNICACION CON EL PROGRAMA ABC DEL CONTROL DE ERRORES*
+      *----------------------------------------------------------------*
+       01 REG-QGECABC.
+          COPY QGECABC.
+      *----------------------------------------------------------------*
+      * COPY DE COMUNICACION PARA TRAER DATOS BASICOS DE PERSONAS      *
+      *----------------------------------------------------------------*
+          COPY PEWC1000.
+      *----------------------------------------------------------------*
+      *               AREA DE TRABAJO DE RUTINA   KN7CB095
+      *----------------------------------------------------------------*
+       01 REG-KNDCB095.
+          COPY KNDCB095.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CUENTAS         *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM001.
+          COPY KNDCM001.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CDT'S           *
+      *----------------------------------------------------------------*
+       01 REG-KNWCBM02.
+          COPY KNWCBM02.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CREDITOS        *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM003.
+          COPY KNDCM003.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE TARJETAS        *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM004.
+          COPY KNDCM004.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE FONDOS          *
+      *----------------------------------------------------------------*
+       01 REG-KNWCBM05.
+          COPY KNWCBM05.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE ADNS            *
+      *----------------------------------------------------------------*
+       01 REG-KNDCBMAN.
+          COPY KNDCBMAN.
+      *----------------------------------------------------------------*00004200
+      *        COPY DE COMUNICACION CON LA RUTINA DE PARAMETROS        *00004300
+      *----------------------------------------------------------------*00004400
+       01 REG-RVWCPRM0.
+          COPY RVWCPRM0.
+      *----------------------------------------------------------------*
+      *               AREA DE TRABAJO DE RUTINA   KN7CBM50
+      *----------------------------------------------------------------*
+       01 REG-KNWCAPR0.
+          COPY KNWCAPR0.
+      *----------------------------------------------------------------*
+      *       COPY DE COMUNICACION CON LA RUTINA TC2C1200              *
+      *----------------------------------------------------------------*
+       01 TCWC040A-01.
+          COPY TCWC040A.
+      *----------------------------------------------------------------*
+      * COPY PARA LA RUTINA BG7CDPE0 - CONSULTA DE NUMERO CELULAR
+         COPY BGECDPE.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO KNDTAPR            *
+      *----------------------------------------------------------------*
+       01 REG-KNDCMAP1.
+          COPY KNDCMAP1.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CUENTAS         *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM011.
+          COPY KNDCMCT1.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CDT'S           *
+      *----------------------------------------------------------------*
+       01 REG-KNWCBM22.
+          COPY KNDCMCD2.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE CREDITOS        *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM023.
+          COPY KNDCMPR3.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE TARJETAS        *
+      *----------------------------------------------------------------*
+       01 REG-KNDCM024.
+          COPY KNDCMTC4.
+      *----------------------------------------------------------------*
+      *           AREA DE TRABAJO DE RUTINA LISTADO DE FONDOS          *
+      *----------------------------------------------------------------*
+       01 REG-KNDCMFD5.
+          COPY KNDCMFD5.
+      *----------------------------------------------------------------*
+       LINKAGE SECTION.                                                 00038300
+       01 DFHCOMMAREA.                                                  00038400
+          COPY KNWCBM01.                                                00038600
+      *----------------------------------------------------------------*00038700
+      *                PROCEDURE DIVISION                              *00038800
+      *----------------------------------------------------------------*00038900
+       PROCEDURE DIVISION.                                              00039000
+      *----------------------------------------------------------------*00039100
+      *     RUTINA PRINCIPAL DE PROCESO                                *00039200
+      *----------------------------------------------------------------*00039300
+       000-PRINCIPAL.                                                   00039400
+           PERFORM 010-INICIO                                           00039500
+           PERFORM 020-PROCESO                                          00039600
+           PERFORM 998-FINAL                                            00039700
+           .                                                            00039800
+      *----------------------------------------------------------------*00039900
+      *     RUTINA INICIO DEL PROCESO INICIALIZACION DE VARIABLES      *00040000
+      *----------------------------------------------------------------*00040100
+       010-INICIO.                                                      00040200
+      *                                                                 00040300
+           EXEC CICS                                                    00040400
+              IGNORE CONDITION ERROR                                    00040500
+           END-EXEC                                                     00040600
+      *                                                                 00040700
+           INITIALIZE WS-VARIABLES                                      00041600
+                      SW-SWITCHES                                       00041700
+           MOVE SPACES                             TO KNPG-S-RETORNO
+           MOVE 'N'                                TO KNPG-S-IND-DATOS
+
+           SET NO-ESCRIBE                          TO TRUE
+
+           MOVE 'KN2CBMPA'                         TO WS-NOMBRE-COLA-TS
+           MOVE ZEROES                             TO KNPG-S-COD-RETORNO
+           MOVE SPACES                             TO KNPG-S-UBI-ERROR
+                                                      KNPG-S-DET-MSG
+           PERFORM 102-VALIDA-ENTRADA
+           PERFORM 104-BORRA-TS-RESP
+           .
+      *----------------------------------------------------------------*00045900
+      *                     VALIDA LOS DATOS DE ENTRADA                *00046000
+      *----------------------------------------------------------------*00046100
+       102-VALIDA-ENTRADA.
+
+           IF KNPG-NUMERO-CL EQUAL SPACES OR LOW-VALUES
+              IF KNPG-NUMERO-ID EQUAL SPACES OR LOW-VALUES
+                 MOVE '0010'                       TO KNPG-S-COD-RETORNO
+                 MOVE 'KNERR14 VALIDA ENTRADA'     TO KNPG-S-UBI-ERROR
+                 MOVE 'NUMERO ID NO INFORMADO '    TO KNPG-S-DET-MSG
+                 PERFORM 998-FINAL
+              ELSE
+                 IF KNPG-TIPOID EQUAL SPACES OR LOW-VALUES
+                    MOVE '0010'                    TO KNPG-S-COD-RETORNO
+                    MOVE 'KNERR14 VALIDA ENTRADA'  TO KNPG-S-UBI-ERROR
+                    MOVE 'TIPO ID NO INFORMADO '   TO KNPG-S-DET-MSG
+                    PERFORM 998-FINAL
+                 END-IF                                                 00042200
+              END-IF
+           END-IF
+      *
+           IF KNPG-PRODUCTO    EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'KNERR14 VALIDA ENTRADA'        TO KNPG-S-UBI-ERROR
+              MOVE 'PRODUCTO NO INFORMADO '        TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+      *
+           IF KNPG-CANAL       EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'KNERR14 VALIDA ENTRADA'        TO KNPG-S-UBI-ERROR
+              MOVE 'CANAL    NO INFORMADO '        TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+      *
+           IF KNPG-SCANAL      EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'KNERR14 VALIDA ENTRADA'        TO KNPG-S-UBI-ERROR
+              MOVE 'SUBCANAL NO INFORMADO '        TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+      *
+           IF KNPG-COLA-TS-OK  EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'KNERR14 VALIDA ENTRADA'        TO KNPG-S-UBI-ERROR
+              MOVE 'NOMBRE TS NO INFORMADO OK'     TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+      *
+           IF KNPG-COLA-TS-ER  EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'KNERR14 VALIDA ENTRADA'        TO KNPG-S-UBI-ERROR
+              MOVE 'NOMBRE TS NO INFORMADO ER'     TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+           .
+      *----------------------------------------------------------------*00046100
+      *                      104-BORRA-TS-RESP                         *00046100
+      *----------------------------------------------------------------*00046100
+       104-BORRA-TS-RESP.
+
+           EXEC CICS
+              DELETEQ TS
+              QNAME(KNPG-COLA-TS-OK)
+           END-EXEC
+
+           EVALUATE EIBRESP
+               WHEN (DFHRESP(NORMAL))
+                    CONTINUE
+               WHEN (DFHRESP(QIDERR))
+                    CONTINUE
+               WHEN OTHER
+                    MOVE '0080'                   TO KNPG-S-COD-RETORNO
+                    MOVE 'KNERR14 BORRA-TS-RESP    ' TO KNPG-S-UBI-ERROR
+                    MOVE 'ERR BORRAR '            TO KNPG-S-DET-MSG(1:)
+                    MOVE  KNPG-COLA-TS-OK         TO KNPG-S-DET-MSG(14:)
+                    PERFORM 998-FINAL
+           END-EVALUATE
+
+           EXEC CICS
+              DELETEQ TS
+              QNAME(KNPG-COLA-TS-ER)
+           END-EXEC
+
+           EVALUATE EIBRESP
+               WHEN (DFHRESP(NORMAL))
+                    CONTINUE
+               WHEN (DFHRESP(QIDERR))
+                    CONTINUE
+               WHEN OTHER
+                    MOVE '0080'                   TO KNPG-S-COD-RETORNO
+                    MOVE 'KNERR14 BORRA-TS-RESP    ' TO KNPG-S-UBI-ERROR
+                    MOVE 'ERR BORRAR '            TO KNPG-S-DET-MSG(1:)
+                    MOVE  KNPG-COLA-TS-ER         TO KNPG-S-DET-MSG(14:)
+                    PERFORM 998-FINAL
+           END-EVALUATE
+           .
+      *----------------------------------------------------------------*00046100
+      *                   PROCESO DE LA TRANSACCION                    *00046100
+      *----------------------------------------------------------------*00046100
+       020-PROCESO.                                                     00046200
+
+           PERFORM 0203-EJECUTA-LISTADOR .
+      *----------------------------------------------------------------*00194100
+      *   RUTINA EN LA CUAL SE INVOCA EL PROGRAMA PARAMETRIZADO QUE    *00194200
+      *    PROCESARA EL LISTADO DE CONTRATOS ASOCIADOS AL PRODUCTO     *00194300
+      *                                                                *00194300
+      *   KN2CBM05 - FONDOS DE INVERSION                               *00194300
+      *   KN2CBM01 - CUENTAS                                           *00194300
+      *   KN2CBM02 - CDT                                               *00194300
+      *   KN2CBM04 - TARJETAS DE CREDITO                               *00194300
+      *   KN2CBM03 - PRESTAMOS                                         *00194300
+      *----------------------------------------------------------------*00194400
+       0203-EJECUTA-LISTADOR.
+
+           MOVE 'X'               TO SW-PRODUCTO
+      *
+           PERFORM 20200-LISTADO-PRODUCTO-ASOC
+      *
+           PERFORM 20206-LISTADO-ADNS
+           SET   NO-M-DATOS       TO TRUE
+           .
+      *----------------------------------------------------------------*00194100
+      *SE ELIMINA EL SELECTOR DE PROGRAMAS YA QUE SOLO DEBE IR UNA VEZ *00194100
+      * EN CADA LISTADOR, Y ESTE DEVOLVERA TODOS LOS CONTRATOS DE ESTE *00194100
+      *----------------------------------------------------------------*00194100
+      *  RUTINA EN LA CUAL SE INVOCA AL LISTADO DE CUENTAS PERSONALES*  00194200
+      *----------------------------------------------------------------*00194400
+       20201-LISTADO-CUENTAS.
+
+           INITIALIZE                                E001-DATOS-ENTRADA
+
+           SET  PD-CUENTAS                        TO TRUE
+
+           MOVE KNPG-NUMERO-CL                    TO E001-INUMCLIEN
+           MOVE KNPG-TIPOID                       TO E001-TIP-ID
+           MOVE KNPG-NUMERO-ID                    TO E001-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2              TO E001-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED             TO E001-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2              TO E001-FECH-CONTAB
+           MOVE KNPG-CAA-USERID                   TO E001-USUARIO
+           MOVE KNPG-CAA-TERMINAL                 TO E001-TERMINAL
+           MOVE 'KNB1'                            TO E001-TRANSACCION
+           MOVE KNPG-IND-PAGINA-E                 TO E001-INDIC-MAS-E
+           MOVE KNPG-TOTAL                        TO E001-TOTAL
+           MOVE KNPG-CANAL                        TO E001-CANAL
+           MOVE KNPG-SCANAL                       TO E001-SUBCANAL
+           MOVE '01'                              TO E001-IND-LISTA
+           MOVE 'KN2CBM01'                        TO PGM-KN2CBM01
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBM01)
+                COMMAREA(E001-KNDCM001)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF E001-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202011-MUEVE-DATOS-CUENTAS
+              ELSE
+                 MOVE SPACES                      TO WS-DATOS-SAL-ER
+
+                 MOVE '60'                        TO KNPG-COD-ERR1
+                 MOVE E001-COD-RESPUESTA          TO KNPG-COD-ERR2
+                 MOVE E001-COD-ERROR              TO KNPG-COD-ERR3
+                 MOVE E001-VALOR-ERROR-UNO        TO KNPG-DES-ERR1
+                 MOVE 'EN EL PROGRAMA CTAS'       TO KNPG-DES-ERR2
+                 MOVE 'AH'                        TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBM01                TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                         TO WS-DATOS-SAL-ER
+              MOVE '60'                           TO KNPG-COD-ERR1
+              MOVE EIBRESP                        TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'         TO KNPG-DES-ERR1
+              MOVE ' DE CUENTAS         '         TO KNPG-DES-ERR2
+              MOVE 'CC'                           TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM01                   TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL                 TO KNPG-ERR-CCLI
+
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *     RUTINA PARA MOVER LOS DATOS DEL LISTADO DE CUENTAS AL      *00194200
+      *                      FORMATO DE SALIDA                         *00194300
+      *----------------------------------------------------------------*00194400
+       202011-MUEVE-DATOS-CUENTAS.
+
+           MOVE E001-INDIC-MAS-S                TO KNPG-IND-PAGINA-S
+           MOVE 1                               TO WS-CONT
+
+           PERFORM UNTIL WS-CONT > 60 OR
+                         E001-NUMERO-CUENTA(WS-CONT) EQUAL SPACES OR
+                         E001-NUMERO-CUENTA(WS-CONT) EQUAL LOW-VALUES
+
+            MOVE SPACES                         TO KNPG-TIPO-PRODUCTO
+                                                   KNPG-TIPO-CONTRATO
+                                                   KNPG-NUM-PRODUCTO
+                                                   KNPG-NUM-CONTRATO
+                                                   KNPG-ESTADO
+                                                   KNPG-DIVISA
+                                                   KNPG-ALIAS
+                                                   KNPG-IND-FAVORITO
+            MOVE SPACES                         TO KNPG-NOMB-FRANQUICIA
+            MOVE ZEROS                          TO KNPG-SALDO-PUNTUAL
+                                                   KNPG-SALDO-DISPONIBLE
+                                                   KNPG-SALDO-CANJE
+            MOVE '2011'                         TO WS-CONTENIDO-IND     00046700
+            MOVE 'MUEVE-DATOS-CUENTAS'          TO WS-CONTENIDO-TOT(1:) 00046800
+            MOVE 'ITEM CON DATOS     '          TO WS-CONTENIDO-TOT(21:)00046800
+            MOVE WS-CONT                        TO WS-CONTENIDO-TOT(42:)00046800
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF E001-ESTADO(WS-CONT) EQUAL 'A'
+               MOVE E001-NUMERO-CUENTA(WS-CONT) TO KNPG-NUM-CONTRATO
+                                                   KNPG-NUM-PRODUCTO
+               IF E001-SALDO-ACTUAL(WS-CONT) IS NUMERIC
+                  MOVE E001-SALDO-ACTUAL(WS-CONT)
+                                                TO KNPG-SALDO-DISPONIBLE
+               END-IF
+               IF E001-SALDO-DISPON(WS-CONT) IS NUMERIC
+                  MOVE E001-SALDO-DISPON(WS-CONT)
+                                                TO KNPG-SALDO-PUNTUAL
+               END-IF
+               IF E001-SALDO-CANJE(WS-CONT) IS NUMERIC
+                  MOVE E001-SALDO-CANJE(WS-CONT) TO KNPG-SALDO-CANJE
+               END-IF
+
+               MOVE E001-DIVISA(WS-CONT)        TO KNPG-DIVISA
+               MOVE E001-ALIAS(WS-CONT)         TO KNPG-ALIAS
+               MOVE E001-FAVORITO(WS-CONT)      TO KNPG-IND-FAVORITO
+               MOVE E001-ESTADO(WS-CONT)        TO KNPG-ESTADO
+               MOVE E001-TIPO-CUENTA(WS-CONT)   TO KNPG-TIPO-PRODUCTO
+
+               IF E001-TIPO-CUENTA(WS-CONT)  EQUAL 'CC'
+                  MOVE 'CUENTA CORRIENTE'       TO KNPG-TIPO-CONTRATO
+               END-IF
+      *
+               IF E001-TIPO-CUENTA(WS-CONT)  EQUAL 'AH'
+                  MOVE 'CUENTA DE AHORROS'      TO KNPG-TIPO-CONTRATO
+               END-IF
+               IF E001-TIPO-CUENTA(WS-CONT)  EQUAL 'DE'
+                  PERFORM 0951-VALIDAR-NUMERO-CEL
+                  MOVE BDPE-CEL-SAL             TO KNPG-NUM-PRODUCTO
+                  MOVE 'DEPOSITO ELECTRONICO'   TO KNPG-TIPO-CONTRATO
+               END-IF
+               MOVE SPACES                      TO WS-UPDATE-APR
+               MOVE E001-ESTADO(WS-CONT)        TO WS-EST-PROD
+               MOVE E001-NUMERO-CUENTA(WS-CONT) TO WS-NUM-PROD
+               MOVE E001-TIPO-CUENTA(WS-CONT)   TO WS-TIP-PROD
+               MOVE E001-DIVISA(WS-CONT)        TO WS-DIVISA
+
+               PERFORM 340-GRABAR-SALIDA
+
+               IF E001-NUMERO-CUENTA(WS-CONT) NOT EQUAL SPACES AND
+                  E001-NUMERO-CUENTA(WS-CONT) NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+
+               ADD 1                            TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+               MOVE SPACES                      TO WS-UPDATE-APR
+               MOVE E001-ESTADO(WS-CONT)        TO WS-EST-PROD
+               MOVE E001-NUMERO-CUENTA(WS-CONT) TO WS-NUM-PROD
+               MOVE E001-TIPO-CUENTA(WS-CONT)   TO WS-TIP-PROD
+               MOVE E001-DIVISA(WS-CONT)        TO WS-DIVISA
+
+               IF E001-NUMERO-CUENTA(WS-CONT) NOT EQUAL SPACES AND
+                  E001-NUMERO-CUENTA(WS-CONT) NOT EQUAL ZEROES AND
+                  E001-NUMERO-CUENTA(WS-CONT) NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+               ADD 1                            TO WS-CONT
+            END-IF
+           END-PERFORM
+
+           MOVE WS-CONT                         TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*00194100
+      *       RUTINA EN LA CUAL SE INVOCA AL LISTADO DE CDT'S          *00194200
+      *----------------------------------------------------------------*00194400
+       20202-LISTADO-CDTS.
+
+           INITIALIZE                              E002-DATOS-ENTRADA
+           SET  PD-CDTS                         TO TRUE
+
+           MOVE KNPG-NUMERO-CL                  TO E002-INUMCLIEN
+           MOVE KNPG-TIPOID                     TO E002-TIP-ID
+           MOVE KNPG-NUMERO-ID                  TO E002-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2            TO E002-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED           TO E002-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2            TO E002-FECH-CONTAB
+           MOVE KNPG-CAA-USERID                 TO E002-USUARIO
+           MOVE KNPG-CAA-TERMINAL               TO E002-TERMINAL
+           MOVE 'KNB2'                          TO E002-TRANSACCION
+           MOVE KNPG-IND-PAGINA-E               TO E002-INDIC-MAS-E
+           MOVE KNPG-TOTAL                      TO E002-TOTAL
+           MOVE KNPG-CANAL                      TO E002-CANAL
+           MOVE KNPG-SCANAL                     TO E002-SUBCANAL
+           MOVE '01'                            TO E002-IND-LISTA
+      *
+           MOVE 'KNB2'                          TO E002-RTA-Q-TS(1:4)
+           MOVE KNPG-CAA-TERMINAL               TO E002-RTA-Q-TS(5:4)
+           MOVE KNPG-NUMERO-CL                  TO E002-RTA-Q-TS(9:8)
+      *
+           MOVE 'KN2CBMPC'                      TO PGM-KN2CBMPC
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMPC)
+                COMMAREA(REG-KNWCBM02)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF E002-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202021-MUEVE-DATOS-CDTS
+              ELSE
+                 MOVE SPACES                    TO WS-DATOS-SAL-ER
+
+                 MOVE '60'                      TO KNPG-COD-ERR1
+                 MOVE E002-COD-RESPUESTA        TO KNPG-COD-ERR2
+                 MOVE E002-COD-ERROR            TO KNPG-COD-ERR3
+                 MOVE E002-VALOR-ERROR-UNO      TO KNPG-DES-ERR1
+                 MOVE 'EN EL PROGRAMA CDT '     TO KNPG-DES-ERR2
+                 MOVE 'CD'                      TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBMPC              TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL            TO KNPG-ERR-CCLI
+
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                       TO WS-DATOS-SAL-ER
+
+              MOVE '60'                         TO KNPG-COD-ERR1
+              MOVE EIBRESP                      TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'       TO KNPG-DES-ERR1
+              MOVE ' DE CDTS            '       TO KNPG-DES-ERR2
+              MOVE 'CD'                         TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBMPC                 TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL               TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *   RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE CDT'S A SALIDA   *00194200
+      *----------------------------------------------------------------*00194400
+       202021-MUEVE-DATOS-CDTS.
+
+           SET  SI-DATO-CDT                     TO TRUE
+           MOVE E002-INDIC-MAS-S                TO KNPG-IND-PAGINA-S
+           MOVE 1                               TO WS-ITEM-CDT
+
+           PERFORM UNTIL NO-DATO-CDT
+
+               EXEC CICS READQ TS
+                 QNAME(E002-RTA-Q-TS)
+                 INTO(WS-DATOS-SALIDA-CDT)
+                 ITEM(WS-ITEM-CDT)
+                 NOHANDLE
+               END-EXEC
+
+               IF EIBRESP EQUAL (DFHRESP(NORMAL))
+               ADD      1                       TO WS-ITEM-CDT
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF WS-ESTADO-CDT        EQUAL 'A' OR
+               WS-ESTADO-CDT        EQUAL 'L' OR
+               WS-ESTADO-CDT        EQUAL 'G' OR
+               WS-ESTADO-CDT        EQUAL 'X'
+      *
+              MOVE WS-NUMERO-CUENTA-CDT         TO KNPG-NUM-CONTRATO
+                                                   KNPG-NUM-PRODUCTO
+              IF WS-SALDO-ACTUAL-CDT     IS NUMERIC
+                 MOVE WS-SALDO-ACTUAL-CDT       TO KNPG-SALDO-PUNTUAL
+              END-IF
+
+              IF WS-SALDO-DISPON-CDT     IS NUMERIC
+                MOVE WS-SALDO-DISPON-CDT        TO KNPG-SALDO-DISPONIBLE
+              END-IF
+
+              MOVE WS-DIVISA-CDT                TO KNPG-DIVISA
+              MOVE WS-ALIAS-CDT                 TO KNPG-ALIAS
+              MOVE WS-FAVORITO-CDT              TO KNPG-IND-FAVORITO
+              MOVE WS-ESTADO-CDT                TO KNPG-ESTADO
+              MOVE WS-TIPO-CUENTA-CDT           TO KNPG-TIPO-PRODUCTO
+
+              MOVE 'CDTS            '           TO KNPG-TIPO-CONTRATO
+
+              MOVE SPACES                       TO WS-UPDATE-APR
+
+              MOVE WS-ESTADO-CDT                TO WS-EST-PROD
+              MOVE WS-NUMERO-CUENTA-CDT         TO WS-NUM-PROD
+              MOVE WS-TIPO-CUENTA-CDT           TO WS-TIP-PROD
+              MOVE WS-DIVISA-CDT                TO WS-DIVISA
+
+              PERFORM 340-GRABAR-SALIDA
+
+              IF WS-NUMERO-CUENTA-CDT NOT EQUAL SPACES AND
+                 WS-NUMERO-CUENTA-CDT NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                 TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+              MOVE SPACES                       TO WS-UPDATE-APR
+              MOVE WS-ESTADO-CDT                TO WS-EST-PROD
+              MOVE WS-NUMERO-CUENTA-CDT         TO WS-NUM-PROD
+              MOVE WS-TIPO-CUENTA-CDT           TO WS-TIP-PROD
+              MOVE WS-DIVISA-CDT                TO WS-DIVISA
+
+              IF WS-NUMERO-CUENTA-CDT  NOT EQUAL SPACES AND
+                 WS-NUMERO-CUENTA-CDT  NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+
+              ADD 1                             TO WS-CONT
+            END-IF
+            ELSE
+             SET NO-DATO-CDT   TO TRUE
+            END-IF
+           END-PERFORM
+
+           MOVE WS-ITEM-CDT                     TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*00194100
+      *      RUTINA EN LA CUAL SE INVOCA AL LISTADO DE PRESTAMOS       *00194200
+      *----------------------------------------------------------------*00194400
+       20203-LISTADO-PRESTAMOS.
+
+           INITIALIZE                              E003-DATOS-ENTRADA
+           SET  PD-CREDITOS                     TO TRUE
+
+           MOVE KNPG-NUMERO-CL                  TO E003-INUMCLIEN
+           MOVE KNPG-TIPOID                     TO E003-TIP-ID
+           MOVE KNPG-NUMERO-ID                  TO E003-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2            TO E003-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED           TO E003-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2            TO E003-FECH-CONTAB
+           MOVE KNPG-CAA-USERID                 TO E003-USUARIO
+           MOVE KNPG-CAA-TERMINAL               TO E003-TERMINAL
+           MOVE 'KNB3'                          TO E003-TRANSACCION
+           MOVE KNPG-IND-PAGINA-E               TO E003-INDIC-MAS-E
+           MOVE KNPG-TOTAL                      TO E003-TOTAL
+           MOVE KNPG-CANAL                      TO E003-CANAL
+           MOVE KNPG-SCANAL                     TO E003-SUBCANAL
+           MOVE '01'                            TO E003-IND-LISTA
+      *
+           MOVE 'KN2CBM03'                      TO PGM-KN2CBM03
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBM03)
+                COMMAREA(E003-KNDCM003)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF E003-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202031-MUEVE-DATOS-PRESTAMOS
+              ELSE
+                 MOVE SPACES                    TO WS-DATOS-SAL-ER
+
+                 MOVE '60'                      TO KNPG-COD-ERR1
+                 MOVE E003-COD-RESPUESTA        TO KNPG-COD-ERR2
+                 MOVE E003-COD-ERROR            TO KNPG-COD-ERR3
+                 MOVE E003-VALOR-ERROR-UNO      TO KNPG-DES-ERR1
+                 MOVE 'EN EL PROGRAMA CRED'     TO KNPG-DES-ERR2
+                 MOVE 'CR'                      TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBM03              TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL            TO KNPG-ERR-CCLI
+
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                       TO WS-DATOS-SAL-ER
+
+              MOVE '60'                         TO KNPG-COD-ERR1
+              MOVE EIBRESP                      TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'       TO KNPG-DES-ERR1
+              MOVE ' DE PRESTAMOS       '       TO KNPG-DES-ERR2
+              MOVE 'CR'                         TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM03                 TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL               TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *   RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE CDT'S A SALIDA   *00194200
+      *----------------------------------------------------------------*00194400
+       202031-MUEVE-DATOS-PRESTAMOS.
+           MOVE E003-INDIC-MAS-S                TO KNPG-IND-PAGINA-S
+           MOVE 1                               TO WS-CONT
+
+           PERFORM UNTIL WS-CONT > 30 OR
+                         E003-NUMERO-PRESTAMO(WS-CONT) EQUAL SPACES OR
+                         E003-NUMERO-PRESTAMO(WS-CONT) EQUAL LOW-VALUES
+               MOVE SPACES                      TO KNPG-TIPO-PRODUCTO
+                                                   KNPG-TIPO-CONTRATO
+                                                   KNPG-NUM-PRODUCTO
+                                                   KNPG-NUM-CONTRATO
+                                                   KNPG-ESTADO
+                                                   KNPG-DIVISA
+                                                   KNPG-ALIAS
+                                                   KNPG-IND-FAVORITO
+               MOVE SPACES                      TO KNPG-NOMB-FRANQUICIA
+               MOVE ZEROES                      TO KNPG-SALDO-PUNTUAL
+                                                   KNPG-SALDO-DISPONIBLE
+                                                   KNPG-SALDO-CANJE
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+             IF E003-ESTADO(WS-CONT) EQUAL 'A'
+                MOVE E003-NUMERO-PRESTAMO(WS-CONT) TO KNPG-NUM-CONTRATO
+                                                      KNPG-NUM-PRODUCTO
+                IF E003-SALDO-ADEU(WS-CONT) IS NUMERIC
+                   MOVE E003-SALDO-ADEU(WS-CONT)
+                                                TO KNPG-SALDO-DISPONIBLE
+                END-IF
+                MOVE E003-PAGO-MIN(WS-CONT)     TO KNPG-SALDO-PUNTUAL
+                MOVE E003-DIVISA(WS-CONT)       TO KNPG-DIVISA
+                MOVE E003-ALIAS(WS-CONT)        TO KNPG-ALIAS
+                MOVE E003-FAVORITO(WS-CONT)     TO KNPG-IND-FAVORITO
+                MOVE E003-ESTADO(WS-CONT)       TO KNPG-ESTADO
+                MOVE 'PR'                       TO KNPG-TIPO-PRODUCTO
+
+                IF E003-TIPO-PRESTAMO(WS-CONT) EQUAL 'CB' OR
+                   E003-TIPO-PRESTAMO(WS-CONT) EQUAL 'CD' OR
+                   E003-TIPO-PRESTAMO(WS-CONT) EQUAL 'CI'
+                   MOVE 'CREDITO         '      TO KNPG-TIPO-CONTRATO
+                ELSE
+                   MOVE 'CREDITO         '      TO KNPG-TIPO-CONTRATO
+                END-IF
+
+                MOVE SPACES                        TO WS-UPDATE-APR
+                MOVE E003-ESTADO(WS-CONT)          TO WS-EST-PROD
+                MOVE E003-NUMERO-PRESTAMO(WS-CONT) TO WS-NUM-PROD
+                MOVE E003-TIPO-PRESTAMO(WS-CONT)   TO WS-TIP-PROD
+                MOVE E003-DIVISA(WS-CONT)          TO WS-DIVISA
+
+                PERFORM 340-GRABAR-SALIDA
+
+                IF E003-NUMERO-PRESTAMO(WS-CONT)  NOT EQUAL SPACES AND
+                   E003-NUMERO-PRESTAMO(WS-CONT)  NOT EQUAL LOW-VALUES
+                   PERFORM 202012-ACTUALIZA-APR
+                END-IF
+                ADD 1                              TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+             ELSE
+               MOVE SPACES                         TO WS-UPDATE-APR
+               MOVE E003-ESTADO(WS-CONT)           TO WS-EST-PROD
+               MOVE E003-NUMERO-PRESTAMO(WS-CONT)  TO WS-NUM-PROD
+               MOVE E003-TIPO-PRESTAMO(WS-CONT)    TO WS-TIP-PROD
+               MOVE E003-DIVISA(WS-CONT)           TO WS-DIVISA
+
+               IF E003-NUMERO-PRESTAMO(WS-CONT)  NOT EQUAL SPACES AND
+                  E003-NUMERO-PRESTAMO(WS-CONT)  NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+               ADD 1                               TO WS-CONT
+             END-IF
+           END-PERFORM
+           MOVE WS-CONT                            TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*00194100
+      *       RUTINA EN LA CUAL SE INVOCA AL LISTADO DE TARJETAS       *00194200
+      *----------------------------------------------------------------*00194400
+       20204-LISTADO-TARJETAS.
+
+           INITIALIZE                          E004-DATOS-ENTRADA
+           SET  PD-TARJETAS                 TO TRUE
+
+           MOVE KNPG-NUMERO-CL              TO E004-INUMCLIEN
+           MOVE KNPG-TIPOID                 TO E004-TIP-ID
+           MOVE KNPG-NUMERO-ID              TO E004-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2        TO E004-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED       TO E004-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2        TO E004-FECH-CONTAB
+           MOVE KNPG-CAA-USERID             TO E004-USUARIO
+           MOVE KNPG-CAA-TERMINAL           TO E004-TERMINAL
+           MOVE CON-KNB4                    TO E004-TRANSACCION
+           MOVE KNPG-IND-PAGINA-E           TO E004-INDIC-MAS-E
+           MOVE KNPG-TOTAL                  TO E004-TOTAL
+           MOVE KNPG-CANAL                  TO E004-CANAL
+           MOVE KNPG-SCANAL                 TO E004-SUBCANAL
+           MOVE '01'                        TO E004-IND-LISTA
+           MOVE 'KN2CBM04'                  TO PGM-KN2CBM04
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBM04)
+                COMMAREA(E004-KNDCM004)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF E004-COD-RESPUESTA EQUAL '00' OR '  '
+                 MOVE  SPACES                TO WS-TEMPORAL
+                 PERFORM 202041-MUEVE-DATOS-TJTS
+              ELSE
+                 MOVE SPACES                 TO WS-DATOS-SAL-ER
+                 MOVE '60'                   TO KNPG-COD-ERR1
+                 MOVE E004-COD-RESPUESTA     TO KNPG-COD-ERR2
+                 MOVE E004-COD-ERROR         TO KNPG-COD-ERR3
+                 MOVE E004-VALOR-ERROR-UNO   TO KNPG-DES-ERR1
+                 MOVE 'EN EL LISTADOR TARJ'  TO KNPG-DES-ERR2
+                 MOVE 'TC'                   TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBM04           TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL         TO KNPG-ERR-CCLI
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                    TO WS-DATOS-SAL-ER
+
+              MOVE '60'                      TO KNPG-COD-ERR1
+              MOVE EIBRESP                   TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'    TO KNPG-DES-ERR1
+              MOVE ' DE TARJETAS        '    TO KNPG-DES-ERR2
+              MOVE 'TC'                      TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM04              TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL            TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE TARJETAS A LA SALIDA*00194200
+      *----------------------------------------------------------------*00194400
+       202041-MUEVE-DATOS-TJTS.
+
+           MOVE E004-INDIC-MAS-S                TO KNPG-IND-PAGINA-S
+           MOVE 1                               TO WS-CONT
+
+           PERFORM UNTIL WS-CONT > 30 OR
+                         E004-IDENTI-TARJETA(WS-CONT) EQUAL SPACES OR
+                         E004-IDENTI-TARJETA(WS-CONT) EQUAL LOW-VALUES
+
+               MOVE SPACES                      TO KNPG-TIPO-PRODUCTO
+                                                   KNPG-TIPO-CONTRATO
+                                                   KNPG-NUM-CONTRATO
+                                                   KNPG-NUM-PRODUCTO
+                                                   KNPG-ESTADO
+                                                   KNPG-DIVISA
+                                                   KNPG-ALIAS
+                                                   KNPG-IND-FAVORITO
+               MOVE SPACES                      TO KNPG-NOMB-FRANQUICIA
+               MOVE ZEROS                       TO KNPG-SALDO-PUNTUAL
+                                                   KNPG-SALDO-DISPONIBLE
+                                                   KNPG-SALDO-CANJE
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF E004-ESTADO(WS-CONT) EQUAL 'A' OR
+               E004-ESTADO(WS-CONT) EQUAL 'B'
+      *
+              MOVE E004-IDENTI-TARJETA(WS-CONT) TO KNPG-NUM-CONTRATO
+              MOVE E004-NUMERO-TARJ(WS-CONT)    TO KNPG-NUM-PRODUCTO
+              IF KNPG-NUM-PRODUCTO IS EQUAL SPACES OR LOW-VALUES
+                MOVE ZEROES                     TO KNPG-NUM-PRODUCTO
+              ELSE
+                MOVE E004-NUMERO-TARJ(WS-CONT)  TO KNPG-NUM-PRODUCTO
+              END-IF
+              IF WS-CONT = 1
+                 MOVE  E004-NUMERO-TARJ(WS-CONT) TO WS-TEMPORAL
+              END-IF
+              IF E004-SALDO-ACT(WS-CONT) IS NUMERIC
+                 IF E004-TJE-AMPAR(WS-CONT) EQUAL 'N' OR
+                    (WS-TEMPORAL NOT EQUAL TO SPACES  OR
+                     WS-TEMPORAL EQUAL TO LOW-VALUES)
+                    MOVE E004-SALDO-ACT(WS-CONT) TO KNPG-SALDO-PUNTUAL
+                 ELSE
+                    MOVE ZEROES                 TO KNPG-SALDO-PUNTUAL
+                 END-IF
+              END-IF
+              IF E004-CUPO-TOT(WS-CONT) IS NUMERIC
+                MOVE E004-CUPO-TOT(WS-CONT)     TO KNPG-SALDO-DISPONIBLE
+              END-IF
+
+              MOVE E004-DIVISA(WS-CONT)         TO KNPG-DIVISA
+              MOVE E004-ALIAS(WS-CONT)          TO KNPG-ALIAS
+              MOVE E004-FAVORITO(WS-CONT)       TO KNPG-IND-FAVORITO
+              MOVE E004-ESTADO(WS-CONT)         TO KNPG-ESTADO
+              MOVE E004-TIPO-TARJETA(WS-CONT)   TO KNPG-TIPO-PRODUCTO
+      *
+              IF E004-TIPO-TARJETA(WS-CONT)  EQUAL 'CB' OR
+                 E004-TIPO-TARJETA(WS-CONT)  EQUAL 'CD' OR
+                 E004-TIPO-TARJETA(WS-CONT)  EQUAL 'CI' OR
+                 E004-TIPO-TARJETA(WS-CONT)  EQUAL 'CT' OR
+                 E004-TIPO-TARJETA(WS-CONT)  EQUAL 'TC'
+                 MOVE 'TARJETA DE CREDITO'      TO KNPG-TIPO-CONTRATO
+              END-IF
+              IF E004-TIPO-TARJETA(WS-CONT)  EQUAL 'CR'
+                 MOVE 'CUPO ROTATIVO     '      TO KNPG-TIPO-CONTRATO
+              END-IF
+              MOVE SPACES                       TO WS-UPDATE-APR
+
+              MOVE E004-ESTADO(WS-CONT)         TO WS-EST-PROD
+              MOVE E004-IDENTI-TARJETA(WS-CONT) TO WS-NUM-PROD
+              MOVE E004-TIPO-TARJETA(WS-CONT)   TO WS-TIP-PROD
+              MOVE E004-DIVISA(WS-CONT)         TO WS-DIVISA
+              MOVE E004-DESCRIPCION(WS-CONT)    TO KNPG-NOMB-FRANQUICIA
+              PERFORM 340-GRABAR-SALIDA
+
+              IF E004-IDENTI-TARJETA(WS-CONT) NOT EQUAL SPACES AND
+                 E004-IDENTI-TARJETA(WS-CONT) NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                 TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+              MOVE SPACES                       TO WS-UPDATE-APR
+              MOVE E004-ESTADO(WS-CONT)         TO WS-EST-PROD
+              MOVE E004-IDENTI-TARJETA(WS-CONT) TO WS-NUM-PROD
+              MOVE E004-TIPO-TARJETA(WS-CONT)   TO WS-TIP-PROD
+              MOVE E004-DIVISA(WS-CONT)         TO WS-DIVISA
+              IF E004-IDENTI-TARJETA(WS-CONT) NOT EQUAL SPACES AND
+                 E004-IDENTI-TARJETA(WS-CONT) NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                             TO WS-CONT
+            END-IF
+           END-PERFORM
+
+           MOVE WS-CONT                         TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*00194100
+      *        RUTINA EN LA CUAL SE INVOCA AL LISTADO DE FONDOS        *00194200
+      *----------------------------------------------------------------*00194400
+       20205-LISTADO-FONDOS.
+
+           INITIALIZE                           E005-DATOS-ENTRADA
+           SET  PD-FONDOS                    TO TRUE
+
+           MOVE KNPG-NUMERO-CL               TO E005-INUMCLIEN
+           MOVE KNPG-TIPOID                  TO E005-TIP-ID
+           MOVE KNPG-NUMERO-ID               TO E005-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2         TO E005-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED        TO E005-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2         TO E005-FECH-CONTAB
+           MOVE KNPG-CAA-USERID              TO E005-USUARIO
+           MOVE KNPG-CAA-TERMINAL            TO E005-TERMINAL
+           MOVE 'KNB5'                       TO E005-TRANSACCION
+           MOVE KNPG-IND-PAGINA-E            TO E005-INDIC-MAS-E
+           MOVE KNPG-TOTAL                   TO E005-TOTAL
+           MOVE KNPG-CANAL                   TO E005-CANAL
+           MOVE KNPG-SCANAL                  TO E005-SUBCANAL
+           MOVE '01'                         TO E005-IND-LISTA
+           MOVE 'KNB5'                       TO E005-COLA-RESP(1:4)
+           MOVE KNPG-CAA-TERMINAL            TO E005-COLA-RESP(5:4)
+           MOVE KNPG-NUMERO-CL               TO E005-COLA-RESP(9:8)
+      *
+           MOVE 'KN2CBM05'                   TO PGM-KN2CBM05
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBM05)
+                COMMAREA(REG-KNWCBM05)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF E005-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202052-FECHA-HABIL
+                 PERFORM 202051-MUEVE-DATOS-FONDOS
+              ELSE
+                 MOVE SPACES                 TO WS-DATOS-SAL-ER
+                 MOVE '60'                   TO KNPG-COD-ERR1
+                 MOVE E005-COD-RESPUESTA     TO KNPG-COD-ERR2
+                 MOVE E005-COD-ERROR         TO KNPG-COD-ERR3
+                 MOVE E005-VALOR-ERROR-UNO   TO KNPG-DES-ERR1
+                 MOVE 'EN EL LISTADOR FOND'  TO KNPG-DES-ERR2
+                 MOVE 'FC'                   TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBM05           TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL         TO KNPG-ERR-CCLI
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                    TO WS-DATOS-SAL-ER
+
+              MOVE '60'                      TO KNPG-COD-ERR1
+              MOVE EIBRESP                   TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'    TO KNPG-DES-ERR1
+              MOVE ' DE CUENTAS         '    TO KNPG-DES-ERR2
+              MOVE 'FC'                      TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM05              TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL            TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE TARJETAS A LA SALIDA*00194200
+      *----------------------------------------------------------------*00194400
+       202051-MUEVE-DATOS-FONDOS.
+
+           MOVE E005-INDIC-MAS-S             TO KNPG-IND-PAGINA-S
+           MOVE 1                            TO WS-CONT-FD
+      *
+           SET SI-DATO-FD                    TO TRUE
+           MOVE 1                            TO WS-ITEM-FD
+           MOVE SPACES                       TO WS-DATOS-SALIDA
+
+           PERFORM UNTIL NO-DATO-FD
+
+              EXEC CICS READQ TS
+                QNAME(E005-COLA-RESP)
+                INTO(WS-DATOS-SALIDA)
+                ITEM(WS-ITEM-FD)
+                NOHANDLE
+              END-EXEC
+
+              IF EIBRESP EQUAL (DFHRESP(NORMAL))
+              ADD 1                          TO WS-ITEM-FD
+      *
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+
+            IF WS-ESTADO    EQUAL 'A' OR
+               WS-ESTADO    EQUAL 'B'
+      *
+              MOVE WS-NUMERO-FONDO           TO KNPG-NUM-CONTRATO
+              IF WS-CTA-ASOCIADA EQUAL SPACES OR LOW-VALUES OR CON-CEROS
+                 MOVE SPACES                 TO KNPG-NUM-PRODUCTO
+              ELSE
+                 MOVE WS-CTA-ASOCIADA        TO KNPG-NUM-PRODUCTO
+              END-IF
+              IF WS-MONTO-ACT        IS     NUMERIC
+                 MOVE WS-MONTO-ACT           TO KNPG-SALDO-PUNTUAL
+              END-IF
+              MOVE ZEROES                    TO KNPG-SALDO-DISPONIBLE
+              IF WS-DISPO-CTA IS NUMERIC
+                 MOVE WS-DISPO-CTA           TO KNPG-SALDO-CANJE
+              ELSE
+                 MOVE ZEROES                 TO KNPG-SALDO-CANJE
+              END-IF
+              IF WS-HORARIO EQUAL SPACES OR LOW-VALUES
+                MOVE SPACES                  TO KNPG-NOMB-FRANQUICIA
+              ELSE
+                MOVE WS-HORARIO              TO KNPG-NOMB-FRANQUICIA
+                MOVE WS-HORARIO2             TO KNPG-NOMB-FRANQUICIA(9:)
+              END-IF
+              MOVE SPACES                    TO KNPG-DIVISA
+              MOVE WS-DIA-HABIL              TO KNPG-DIVISA(1:1)
+              MOVE WS-IND-ABIERTO            TO KNPG-DIVISA(2:1)
+              MOVE WS-DESCRIPCION            TO KNPG-ALIAS
+              MOVE WS-FAVORITO               TO KNPG-IND-FAVORITO
+              MOVE WS-ESTADO                 TO KNPG-ESTADO
+              MOVE WS-TIPO-FONDO             TO KNPG-TIPO-PRODUCTO
+      *
+              MOVE 'FONDOS D INVERSION'      TO KNPG-TIPO-CONTRATO
+              MOVE SPACES                    TO WS-UPDATE-APR
+              MOVE WS-ESTADO                 TO WS-EST-PROD
+              MOVE WS-NUMERO-FONDO           TO WS-NUM-PROD
+              MOVE WS-TIPO-FONDO             TO WS-TIP-PROD
+              MOVE WS-DIVISA-FD              TO WS-DIVISA
+
+              PERFORM 340-GRABAR-SALIDA
+
+              IF WS-NUMERO-FONDO            NOT EQUAL SPACES AND
+                 WS-NUMERO-FONDO            NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                 TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+              MOVE SPACES                    TO WS-UPDATE-APR
+              MOVE WS-ESTADO                 TO WS-EST-PROD
+              MOVE WS-NUMERO-FONDO           TO WS-NUM-PROD
+              MOVE WS-TIPO-FONDO             TO WS-TIP-PROD
+              MOVE WS-DIVISA-FD              TO WS-DIVISA
+
+              IF WS-NUMERO-FONDO            NOT EQUAL SPACES AND
+                 WS-NUMERO-FONDO            NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                          TO WS-CONT-FD
+            END-IF
+           ELSE
+             SET NO-DATO-FD        TO TRUE
+           END-IF
+           END-PERFORM
+
+           MOVE WS-CONT-FD                   TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*
+      *       RUTINA EN LA CUAL SE INVOCA AL LISTADO DE ADNS           *
+      *----------------------------------------------------------------*
+       20206-LISTADO-ADNS.
+
+           INITIALIZE                          EMAN-DATOS-ENTRADA
+           SET  PD-ADN                      TO TRUE
+
+           MOVE KNPG-NUMERO-CL              TO EMAN-INUMCLIEN
+           MOVE KNPG-TIPOID                 TO EMAN-TIP-ID
+           MOVE KNPG-NUMERO-ID              TO EMAN-NUM-ID
+           MOVE KNPG-CAA-FECHA-OPER2        TO EMAN-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED       TO EMAN-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2        TO EMAN-FECH-CONTAB
+           MOVE KNPG-CAA-USERID             TO EMAN-USUARIO
+           MOVE KNPG-CAA-TERMINAL           TO EMAN-TERMINAL
+           MOVE 'KNB6'                      TO EMAN-TRANSACCION
+      *
+           MOVE KNPG-IND-PAGINA-E           TO EMAN-INDIC-MAS-E
+           MOVE KNPG-TOTAL                  TO EMAN-TOTAL
+           MOVE KNPG-CANAL                  TO EMAN-CANAL
+           MOVE KNPG-SCANAL                 TO EMAN-SUBCANAL
+           MOVE '01'                        TO EMAN-IND-LISTA
+           MOVE 'KN2CBMAN'                  TO PGM-KN2CBMAN
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMAN)
+                COMMAREA(EMAN-KNDCBMAN)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF EMAN-COD-RESPUESTA EQUAL '00' OR '  '
+                 MOVE  SPACES               TO WS-TEMPORAL
+                 PERFORM 202061-MUEVE-DATOS-ADNS
+              ELSE
+                 MOVE SPACES             TO WS-DATOS-SAL-ER
+
+                 MOVE '60'                   TO KNPG-COD-ERR1
+                 MOVE EMAN-COD-RESPUESTA     TO KNPG-COD-ERR2
+                 MOVE EMAN-COD-ERROR         TO KNPG-COD-ERR3
+                 MOVE EMAN-VALOR-ERROR-UNO   TO KNPG-DES-ERR1
+                 MOVE 'EN EL LISTADOR ADNS'  TO KNPG-DES-ERR2
+                 MOVE 'AN'                     TO KNPG-ERR-TPRO
+                 MOVE PGM-KN2CBMAN       TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL     TO KNPG-ERR-CCLI
+
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES             TO WS-DATOS-SAL-ER
+
+              MOVE '60'                   TO KNPG-COD-ERR1
+              MOVE EIBRESP                TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR' TO KNPG-DES-ERR1
+              MOVE ' DE ADNS            ' TO KNPG-DES-ERR2
+              MOVE 'AN'                     TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBMAN       TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL     TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE ADNS A LA SALIDA    *
+      *----------------------------------------------------------------*
+       202061-MUEVE-DATOS-ADNS.
+
+           MOVE EMAN-INDIC-MAS-S               TO KNPG-IND-PAGINA-S
+           MOVE 1                              TO WS-CONT
+
+           PERFORM UNTIL WS-CONT > 30 OR
+                         EMAN-CONT-ADN(WS-CONT) EQUAL SPACES OR
+                         EMAN-CONT-ADN(WS-CONT) EQUAL LOW-VALUES
+
+               MOVE SPACES                     TO KNPG-TIPO-PRODUCTO
+                                                  KNPG-TIPO-CONTRATO
+                                                  KNPG-NUM-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+                                                  KNPG-ESTADO
+                                                  KNPG-DIVISA
+                                                  KNPG-ALIAS
+                                                  KNPG-IND-FAVORITO
+               MOVE ZEROS                      TO KNPG-SALDO-PUNTUAL
+                                                  KNPG-SALDO-DISPONIBLE
+                                                  KNPG-SALDO-CANJE
+               MOVE SPACES                     TO KNPG-NOMB-FRANQUICIA
+      *
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF EMAN-ESTADO(WS-CONT) EQUAL 'A' OR
+               EMAN-ESTADO(WS-CONT) EQUAL 'B'
+      *
+              MOVE EMAN-CONT-ADN(WS-CONT)      TO KNPG-NUM-CONTRATO
+              MOVE EMAN-CONT-ADN(WS-CONT)      TO KNPG-NUM-PRODUCTO
+              IF KNPG-NUM-PRODUCTO IS EQUAL SPACES OR LOW-VALUES
+                MOVE ZEROES                    TO KNPG-NUM-PRODUCTO
+              ELSE
+                MOVE EMAN-CONT-ADN(WS-CONT)    TO KNPG-NUM-PRODUCTO
+              END-IF
+              IF WS-CONT EQUAL TO 1
+                 MOVE  EMAN-CONT-ADN(2)        TO WS-TEMPORAL
+              END-IF
+              IF EMAN-SALDO-ACT(WS-CONT) IS NUMERIC
+                    MOVE EMAN-SALDO-ACT(WS-CONT) TO KNPG-SALDO-PUNTUAL
+              END-IF
+
+              IF EMAN-CUPO-TOT(WS-CONT) IS NUMERIC
+
+                MOVE EMAN-CUPO-TOT(WS-CONT)    TO KNPG-SALDO-DISPONIBLE
+
+              END-IF
+
+              MOVE EMAN-DIVISA(WS-CONT)        TO KNPG-DIVISA
+              MOVE EMAN-ALIAS(WS-CONT)         TO KNPG-ALIAS
+              MOVE EMAN-FAVORITO(WS-CONT)      TO KNPG-IND-FAVORITO
+              MOVE EMAN-ESTADO(WS-CONT)        TO KNPG-ESTADO
+              MOVE EMAN-TIPO-ADN(WS-CONT)      TO KNPG-TIPO-PRODUCTO
+      *
+              MOVE 'ADELANTO DE NOMINA'        TO KNPG-TIPO-CONTRATO
+              MOVE SPACES                      TO WS-UPDATE-APR
+
+              MOVE EMAN-ESTADO(WS-CONT)        TO WS-EST-PROD
+              MOVE EMAN-CONT-ADN(WS-CONT)      TO WS-NUM-PROD
+              MOVE EMAN-TIPO-ADN(WS-CONT)      TO WS-TIP-PROD
+              MOVE EMAN-DIVISA(WS-CONT)        TO WS-DIVISA
+
+              PERFORM 340-GRABAR-SALIDA
+
+              IF EMAN-CONT-ADN(WS-CONT) NOT EQUAL SPACES AND
+                 EMAN-CONT-ADN(WS-CONT) NOT EQUAL LOW-VALUES
+
+                 PERFORM 202012-ACTUALIZA-APR
+
+              END-IF
+
+              ADD 1                 TO WS-CONT
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE EMAN-ESTADO(WS-CONT)        TO WS-EST-PROD
+              MOVE EMAN-CONT-ADN(WS-CONT)      TO WS-NUM-PROD
+              MOVE EMAN-TIPO-ADN(WS-CONT)      TO WS-TIP-PROD
+              MOVE EMAN-DIVISA(WS-CONT)        TO WS-DIVISA
+
+              IF EMAN-CONT-ADN(WS-CONT) NOT EQUAL SPACES AND
+                 EMAN-CONT-ADN(WS-CONT) NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+              ADD 1                            TO WS-CONT
+            END-IF
+           END-PERFORM
+
+           MOVE WS-CONT                        TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*
+      *                  202052-FECHA-HABIL                            *
+      *----------------------------------------------------------------*
+       202052-FECHA-HABIL.
+
+           MOVE 'TC2C1200'                   TO RUT-TC2C1200
+           INITIALIZE TCWC0400
+
+           MOVE '1'                          TO W040-CDOPCIO
+           MOVE KNPG-CAA-FECHA-OPER2(9:2)    TO W040-FHTRAT1(1:2)
+           MOVE KNPG-CAA-FECHA-OPER2(6:2)    TO W040-FHTRAT1(4:2)
+           MOVE KNPG-CAA-FECHA-OPER2(1:4)    TO W040-FHTRAT1(7:4)
+           MOVE '.'                          TO W040-FHTRAT1(3:1)
+                                                W040-FHTRAT1(6:1)
+           MOVE '1'                          TO W040-TRSABADO
+           MOVE '0'                          TO W040-TRATFEST
+
+           EXEC CICS
+              LINK PROGRAM(RUT-TC2C1200)
+              COMMAREA(TCWC040A-01)
+              NOHANDLE
+           END-EXEC
+
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF W040-CDRETORN = '00'
+                 IF W040-TIPODIA = 'H'
+                    MOVE 'S'                 TO WS-DIA-HABIL
+                 ELSE
+                    MOVE 'N'                 TO WS-DIA-HABIL
+                 END-IF
+              ELSE
+                 MOVE SPACES                 TO WS-DATOS-SAL-ER
+                 MOVE '60'                   TO KNPG-COD-ERR1
+                 MOVE W040-CDRETORN          TO KNPG-COD-ERR2
+                 MOVE 'DIA HABIL TC2C1200 '  TO KNPG-DES-ERR1
+                 MOVE 'FC'                   TO KNPG-ERR-TPRO
+                 MOVE RUT-TC2C1200           TO KNPG-ERR-PRGL
+                 MOVE KNPG-NUMERO-CL         TO KNPG-ERR-CCLI
+
+                 PERFORM 340-GRABA-REG-ERR
+              END-IF
+           ELSE
+              MOVE SPACES                    TO WS-DATOS-SAL-ER
+              MOVE '60'                      TO KNPG-COD-ERR1
+              MOVE EIBRESP                   TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO RUTINA     '    TO KNPG-DES-ERR1
+              MOVE 'DIAS HABILES        '    TO KNPG-DES-ERR2
+              MOVE 'FC'                      TO KNPG-ERR-TPRO
+              MOVE RUT-TC2C1200              TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL            TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*00194100
+      *      RUTINA PARA ACTUALIZAR REGISTRO EN LA TABLA KNDTAPR       *00194200
+      *----------------------------------------------------------------*00194400
+       202012-ACTUALIZA-APR.
+      *
+           INITIALIZE REG-KNWCAPR0                                      00222611
+
+           MOVE 'E'                          TO WAPR-E-OPCION           00222612
+           MOVE KNPG-NUMERO-CL               TO WAPR-E-CNCCLIPU         00222613
+           MOVE KNPG-NUMERO-ID               TO WAPR-E-CNUSERID         00222614
+           MOVE WS-TIP-PROD                  TO WAPR-E-CNFMTAPR         00222615
+                                                WAPR-CNFMTAPR
+           MOVE WS-NUM-PROD                  TO WAPR-E-CNASUPRO         00222616
+           MOVE KNPG-SCANAL                  TO WAPR-E-CNCNLIDA         00222617
+           MOVE '0013'                       TO WAPR-E-CNCENTID         00222618
+      *                                                                 00222619
+           MOVE SPACES                       TO WAPR-CNYEATIT
+           MOVE 'N'                          TO WAPR-CNYVAEXE
+           MOVE WS-DIVISA                    TO WAPR-CNDIVISA
+           MOVE 'KN2CBMPA'                   TO WAPR-CNNETNAM
+           MOVE KNPG-CAA-FECHA-OPER2         TO WAPR-CNFHULMO
+           MOVE KNPG-CAA-USERID              TO WAPR-CNUSUMOD
+           MOVE KNPG-SCANAL                  TO WAPR-CNCNLIDA
+           MOVE KNPG-CAA-ENTIDAD             TO WAPR-CNCENTID
+      *                                                                 00222619
+           IF PD-ADN
+              IF WS-EST-PROD EQUAL 'A'
+                 MOVE 'A1'                   TO WAPR-CNESTADO
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO
+              END-IF
+           END-IF
+           IF PD-CUENTAS
+              IF WS-EST-PROD EQUAL 'A'                                  00222619
+                 MOVE 'A1'                   TO WAPR-CNESTADO           00222620
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO           00222620
+              END-IF
+           END-IF
+      *                                                                 00222621
+           IF PD-CDTS
+              IF WS-EST-PROD EQUAL 'A' OR                               00222619
+                 WS-EST-PROD EQUAL 'L' OR                               00222619
+                 WS-EST-PROD EQUAL 'G' OR                               00222619
+                 WS-EST-PROD EQUAL 'X'                                  00222619
+                 MOVE 'A1'                   TO WAPR-CNESTADO           00222620
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO           00222620
+              END-IF
+           END-IF
+      *                                                                 00222621
+           IF PD-CREDITOS
+              IF WS-EST-PROD EQUAL 'A'                                  00222619
+                 MOVE 'A1'                   TO WAPR-CNESTADO           00222620
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO           00222620
+              END-IF
+           END-IF
+      *                                                                 00222621
+           IF PD-TARJETAS
+              IF WS-EST-PROD EQUAL 'A' OR                               00222619
+                 WS-EST-PROD EQUAL 'B'                                  00222619
+                 MOVE 'A1'                   TO WAPR-CNESTADO           00222620
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO           00222620
+              END-IF
+           END-IF
+      *                                                                 00222621
+           IF PD-FONDOS
+              IF WS-EST-PROD EQUAL 'A' OR                               00222619
+                 WS-EST-PROD EQUAL 'B'                                  00222619
+                 MOVE 'A1'                   TO WAPR-CNESTADO           00222620
+              ELSE
+                 MOVE 'X1'                   TO WAPR-CNESTADO           00222620
+              END-IF
+           END-IF
+      *                                                                 00222621
+           EXEC CICS                                                    00222622
+             LINK PROGRAM(RUT-KN7CBM50)                                 00222623
+             COMMAREA(REG-KNWCAPR0)                                     00222624
+           END-EXEC                                                     00222625
+      *                                                                 00222626
+           IF (WAPR-RETORNO NOT = CTE-RETORNO-OK) THEN                  00222627
+               MOVE '2013'                   TO WS-CONTENIDO-IND        00222628
+               MOVE 'RETORNA ERROR UPDATE'   TO WS-CONTENIDO-TOT(1:20)  00222628
+               MOVE WAPR-RETORNO             TO WS-CONTENIDO-TOT(23:)   00222629
+               PERFORM 31-ESCRIBE-COLA-TS                               00222630
+           END-IF.                                                      00222635
+      *
+      *----------------------------------------------------------------*00194100
+      *     RUTINA PARA MOVER LOS DATOS DE LA TABLA DE ASUNTOS AL      *00194200
+      *     FORMATO DE SALIDA                                          *00194300
+      *----------------------------------------------------------------*00194400
+       340-GRABAR-SALIDA.                                               00194500
+
+           MOVE LENGTH OF WS-DATOS-SAL-TS     TO WS-LONG-TS-RES         16829400
+      *                                                                 00222626
+           EXEC CICS                                                    16840000
+                WRITEQ TS QNAME(KNPG-COLA-TS-OK)
+                FROM(WS-DATOS-SAL-TS)                                   16860000
+                LENGTH(WS-LONG-TS-RES)                                  16870000
+           END-EXEC                                                     16880000
+           .                                                            00199600
+      *----------------------------------------------------------------*00194100
+      *     RUTINA PARA ESCRIBIR LA RESPUESTA CUANDO SE PRESENTAN      *00194200
+      *     ERRORES EN LOS LISTADORES                                  *00194300
+      *----------------------------------------------------------------*00194400
+       340-GRABA-REG-ERR.                                               00194500
+
+           MOVE LENGTH OF WS-DATOS-SAL-ER     TO WS-LONG-TS-ERR         16829400
+      *                                                                 00222626
+           EXEC CICS                                                    16840000
+                WRITEQ TS QNAME(KNPG-COLA-TS-ER)
+                FROM(WS-DATOS-SAL-ER)                                   16860000
+                LENGTH(WS-LONG-TS-ERR)                                  16870000
+           END-EXEC                                                     16880000
+           .                                                            00199600
+      *----------------------------------------------------------------*00219500
+      * RUTINA  PARA BORRAR COLAS TS QUE SE USARON PARA PASO DE DATOS  *00219600
+      *----------------------------------------------------------------*00219700
+       997-BORRAR-TS.                                                   00219800
+
+           IF NO-ESCRIBE
+      *BORRA COLA TS DEL PROGRAMA KN2CBMPC - LISTADO DE CDT'S -
+              EXEC CICS
+                   DELETEQ TS
+                   QNAME(E002-RTA-Q-TS)
+                   NOHANDLE
+              END-EXEC
+      *BORRA COLA TS DEL PROGRAMA KN2CBM05 - LISTADO DE FONDOS -
+              EXEC CICS
+                   DELETEQ TS
+                   QNAME(E005-COLA-RESP)
+                   NOHANDLE
+              END-EXEC
+           END-IF
+           .
+      *----------------------------------------------------------------*00219500
+      *      RUTINA FINAL DEL PROGRAMA                                 *00219600
+      *----------------------------------------------------------------*00219700
+       998-FINAL.                                                       00219800
+
+           PERFORM 997-BORRAR-TS
+
+           EXEC CICS                                                    00219900
+              RETURN                                                    00220000
+           END-EXEC.                                                    00220100
+      *----------------------------------------------------------------*
+      *                       31-ESCRIBE-COLA-TS                       *
+      *       ESCRIBE COLA TS DE LOG PARA VALIDAR FUNCIONAMIENTO       *
+      *----------------------------------------------------------------*
+       31-ESCRIBE-COLA-TS.
+
+            CONTINUE .
+      *
+      ******************************************************************
+      *                    0951-VALIDAR-NUMERO-CEL                     *
+      ******************************************************************
+       0951-VALIDAR-NUMERO-CEL.
+
+           INITIALIZE BGECDPE
+           MOVE 'C1'                               TO BDPE-OPCION
+           MOVE E001-NUMERO-CUENTA(WS-CONT)(1:4)   TO BDPE-ENT-ENT
+           MOVE E001-NUMERO-CUENTA(WS-CONT)(5:4)   TO BDPE-OFI-ENT
+           MOVE E001-NUMERO-CUENTA(WS-CONT)(11:10) TO BDPE-CTA-ENT
+      *
+           CALL RUT-BG7CDPE0 USING BGECDPE
+      *
+           IF (BDPE-RETORNO  = CTE-RETORNO-OK)                          00169300
+              CONTINUE                                                  00169400
+           ELSE                                                         00169500
+            IF (BDPE-RETORNO  = '10')                                   00169300
+              MOVE '095-'                     TO WS-CONTENIDO-IND       00073200
+              MOVE 'VALIDA DEPOSITO ELECTRO'  TO WS-CONTENIDO-TOT       00073300
+              MOVE 'ERROR 10 '                TO WS-CONTENIDO-TOT(26:)  00073300
+              MOVE  BDPE-CODI-ERROR           TO WS-CONTENIDO-TOT(36:)  00073300
+              MOVE  BDPE-DES1-ERROR           TO WS-CONTENIDO-TOT(46:)  00073300
+              MOVE  BDPE-DES2-ERROR           TO WS-CONTENIDO-TOT(66:)  00073300
+              PERFORM 31-ESCRIBE-COLA-TS                                00073500
+            ELSE
+              MOVE '0056'                     TO KNPG-S-COD-RETORNO
+              MOVE BDPE-CODI-ERROR            TO KNPG-S-UBI-ERROR(1:7)
+              MOVE BDPE-DES1-ERROR            TO KNPG-S-UBI-ERROR(9:22)
+              MOVE BDPE-DES2-ERROR            TO KNPG-S-DET-MSG(1:)
+              PERFORM 998-FINAL
+            END-IF                                                      00172000
+           END-IF                                                       00172000
+           .
+      *
+      ******************************************************************
+      *           NUEVA CONSULTA POSICION GLOBAL OZP2                  *
+      ******************************************************************
+      *    LISTA LOS PRODUCTOS VERSION ACTUAL
+      ******************************************************************
+       20200-LISTADOR-PRODUCTOS .
+           PERFORM 20201-LISTADO-CUENTAS
+           PERFORM 20202-LISTADO-CDTS
+           PERFORM 20203-LISTADO-PRESTAMOS
+           PERFORM 20204-LISTADO-TARJETAS
+           PERFORM 20205-LISTADO-FONDOS .
+      *---------------------------------------------------------------*
+      *    RUTINA PARA CONSULTAR LOS PRODUCTOS ASOCIADOS A UN CLIENTE *
+      *---------------------------------------------------------------*
+       20200-LISTADO-PRODUCTO-ASOC .
+      *
+           INITIALIZE   EAP1-DATOS-ENTRADA
+           MOVE ZEROES                       TO EAP1-COD-RESPUESTA
+           MOVE KNPG-NUMERO-CL               TO EAP1-NUMCLIEN
+           MOVE KNPG-SCANAL                  TO EAP1-SUBCANAL
+           MOVE KNPG-TOTAL                   TO EAP1-MAXIMO
+           MOVE KNPG-IND-PAGINA-E            TO EAP1-IND-PAG-E
+           MOVE '01'                         TO EAP1-IND-LISTA
+
+           EXEC CICS
+             LINK PROGRAM(PGM-KN2CBAP1)
+             COMMAREA(EAP1-KNDCMAP1)
+           END-EXEC
+
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+      *
+              IF EAP1-TOTAL-ENV  > 60
+                 PERFORM 20200-LISTADOR-PRODUCTOS
+              ELSE
+                IF EAP1-COD-RESPUESTA EQUAL CTE-RETORNO-OK
+                   MOVE EAP1-TOTAL-ENV           TO WS-TOTAL-ENV
+                   MOVE EAP1-IND-PAG-S           TO ECT1-INDIC-MAS-S
+                   MOVE EAP1-INDIC-LOG           TO WS-INDIC-LOG
+                   MOVE EAP1-INDIC-TRZ           TO WS-INDIC-TRZ
+                   MOVE EAP1-CLIEN-TRZ           TO WS-CLIEN-TRZ
+      *
+                   PERFORM UNTIL WS-CONT EQUAL   TO WS-TOTAL-ENV
+                      ADD 1                      TO WS-CONT
+                      MOVE EAP1-SUBPRO(WS-CONT)  TO WS-SUBPRO(WS-CONT)
+                      MOVE EAP1-NUMPRO(WS-CONT)  TO WS-NUMPRO(WS-CONT)
+                      MOVE EAP1-SEUDON(WS-CONT)  TO WS-SEUDON(WS-CONT)
+                      MOVE EAP1-FAVORI(WS-CONT)  TO WS-FAVORI(WS-CONT)
+                      MOVE EAP1-ESTADO(WS-CONT)
+                                              TO WS-ESTADO-PROD(WS-CONT)
+      *
+                      EVALUATE WS-SUBPRO(WS-CONT)
+      * VALIDA SALDOS CUENTAS
+                        WHEN 'AH'
+                        WHEN 'CC'
+                        WHEN 'CE'
+                        WHEN 'DE'
+                           PERFORM 230000-TRAE-SALDOS-CUENTA
+      * VALIDA SALDOS CDTS
+                        WHEN 'CD'
+                        WHEN 'CI'
+                        WHEN 'CB'
+                        WHEN 'CT'
+                           PERFORM 230000-TRAE-SALDOS-CDTS
+      * VALIDA SALDOS PRESTAMOS
+                        WHEN 'CL'
+                        WHEN 'HI'
+                        WHEN 'CS'
+                        WHEN 'CM'
+                           PERFORM 230000-TRAE-SALDOS-PRESTAMOS
+      * VALIDA SALDOS TARJETAS
+                        WHEN 'TC'
+                        WHEN 'CR'
+                        WHEN 'TA'
+                           PERFORM 230000-TRAE-SALDOS-TARJETAS
+      * VALIDA SALDOS FONDOS
+                        WHEN 'AN'
+                        WHEN 'CF'
+                        WHEN 'BD'
+                        WHEN 'BF'
+                        WHEN 'FA'
+                        WHEN 'FB'
+                        WHEN 'FC'
+                        WHEN 'FE'
+                        WHEN 'FG'
+                        WHEN 'FN'
+                        WHEN 'FT'
+                        WHEN 'FZ'
+                        WHEN 'MD'
+                        WHEN 'PA'
+                        WHEN 'PR'
+                           PERFORM 230000-TRAE-SALDOS-FONDOS
+                      END-EVALUATE
+                   END-PERFORM
+                ELSE
+                   MOVE '0020'                   TO KNPG-S-COD-RETORNO
+                   MOVE 'KNEBMPA          '      TO KNPG-S-UBI-ERROR
+                   MOVE 'ERROR TRAER DATOS  '    TO KNPG-S-DET-MSG
+                   PERFORM 998-FINAL
+                END-IF
+              END-IF
+           ELSE
+             MOVE '50'                         TO KNPG-S-COD-RETORNO
+             MOVE 'KN2CBMPA'                   TO KNPG-S-UBI-ERROR
+             MOVE 'ERROR EN EL CICS'           TO KNPG-S-DET-MSG
+             PERFORM 998-FINAL
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *     RUTINA INVOCA AL LISTADO DE CUENTAS PERSONALES NUEVA
+      *----------------------------------------------------------------*
+       230000-TRAE-SALDOS-CUENTA .
+
+           INITIALIZE                             ECT1-DATOS-ENTRADA
+           SET  PD-CUENTAS                     TO TRUE
+
+           MOVE KNPG-CAA-FECHA-OPER2           TO ECT1-FECH-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2           TO ECT1-FECH-CONTAB
+           MOVE WS-SUBPRO(WS-CONT)             TO ECT1-SUBPRO
+           MOVE WS-NUMPRO(WS-CONT)             TO ECT1-NUMPRO
+           MOVE '01'                           TO ECT1-IND-LISTA
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMCT)
+                COMMAREA(ECT1-KNDCMCT1)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF ECT1-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202021-MUEVE-DATOS-CUENTAS
+              ELSE
+                 IF WS-LIS-CTAS EQUAL 0
+                    MOVE SPACES                TO WS-DATOS-SAL-ER
+                    MOVE '60'                  TO KNPG-COD-ERR1
+                    MOVE ECT1-COD-RESPUESTA    TO KNPG-COD-ERR2
+                    MOVE ECT1-COD-ERROR        TO KNPG-COD-ERR3
+                    MOVE ECT1-VALOR-ERROR-UNO  TO KNPG-DES-ERR1
+                    MOVE 'EN EL PROGRAMA CTAS' TO KNPG-DES-ERR2
+                    MOVE 'AH'                  TO KNPG-ERR-TPRO
+                    MOVE PGM-KN2CBM01          TO KNPG-ERR-PRGL
+                    MOVE KNPG-NUMERO-CL        TO KNPG-ERR-CCLI
+                    MOVE 1                     TO WS-LIS-CTAS
+                    PERFORM 340-GRABA-REG-ERR
+                 END-IF
+              END-IF
+           ELSE
+              MOVE SPACES                      TO WS-DATOS-SAL-ER
+              MOVE '60'                        TO KNPG-COD-ERR1
+              MOVE EIBRESP                     TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'      TO KNPG-DES-ERR1
+              MOVE ' DE CUENTAS         '      TO KNPG-DES-ERR2
+              MOVE 'CC'                        TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM01                TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *     RUTINA PARA MOVER LOS DATOS DEL LISTADO DE CUENTAS AL      *
+      *                      FORMATO DE SALIDA                         *
+      *----------------------------------------------------------------*
+       202021-MUEVE-DATOS-CUENTAS.
+      *
+            MOVE SPACES                        TO KNPG-TIPO-PRODUCTO
+                                                  KNPG-TIPO-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+                                                  KNPG-NUM-CONTRATO
+                                                  KNPG-ESTADO
+                                                  KNPG-DIVISA
+                                                  KNPG-ALIAS
+                                                  KNPG-IND-FAVORITO
+            MOVE SPACES                        TO KNPG-NOMB-FRANQUICIA
+            MOVE ZEROS                         TO KNPG-SALDO-PUNTUAL
+                                                  KNPG-SALDO-DISPONIBLE
+                                                  KNPG-SALDO-CANJE
+      *
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF ECT1-ESTADO  EQUAL 'A'
+               MOVE ECT1-NUMERO-CUENTA         TO KNPG-NUM-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+               IF ECT1-SALDO-ACTUAL    IS NUMERIC
+                  MOVE ECT1-SALDO-ACTUAL       TO KNPG-SALDO-DISPONIBLE
+               END-IF
+
+               IF ECT1-SALDO-DISPON    IS NUMERIC
+                  MOVE ECT1-SALDO-DISPON       TO KNPG-SALDO-PUNTUAL
+               END-IF
+
+               IF ECT1-SALDO-CANJE     IS NUMERIC
+                  MOVE ECT1-SALDO-CANJE        TO KNPG-SALDO-CANJE
+               END-IF
+      *
+               MOVE ECT1-DIVISA                TO KNPG-DIVISA
+               MOVE ECT1-ALIAS                 TO KNPG-ALIAS
+               MOVE ECT1-FAVORITO              TO KNPG-IND-FAVORITO
+               MOVE ECT1-ESTADO                TO KNPG-ESTADO
+               MOVE EAP1-SUBPRO(WS-CONT)       TO KNPG-TIPO-PRODUCTO
+
+              IF EAP1-SUBPRO(WS-CONT)  EQUAL 'CC'
+                 MOVE 'CUENTA CORRIENTE'       TO KNPG-TIPO-CONTRATO
+              END-IF
+              IF EAP1-SUBPRO(WS-CONT)  EQUAL 'AH'
+                 MOVE 'CUENTA DE AHORROS'      TO KNPG-TIPO-CONTRATO
+              END-IF
+              IF EAP1-SUBPRO(WS-CONT)  EQUAL 'DE'
+                 PERFORM 202041-VALIDAR-NUMERO-CEL
+                 MOVE BDPE-CEL-SAL             TO KNPG-NUM-PRODUCTO
+                 MOVE 'DEPOSITO ELECTRONICO'   TO KNPG-TIPO-CONTRATO
+              END-IF
+      *
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE ECT1-ESTADO                 TO WS-EST-PROD
+              MOVE ECT1-NUMERO-CUENTA          TO WS-NUM-PROD
+              MOVE EAP1-SUBPRO(WS-CONT)        TO WS-TIP-PROD
+              MOVE ECT1-DIVISA                 TO WS-DIVISA
+
+              PERFORM 340-GRABAR-SALIDA
+
+              IF ECT1-NUMERO-CUENTA    NOT EQUAL SPACES AND
+                 ECT1-NUMERO-CUENTA    NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE ECT1-ESTADO                 TO WS-EST-PROD
+              MOVE ECT1-NUMERO-CUENTA          TO WS-NUM-PROD
+              MOVE ECT1-TIPO-CUENTA            TO WS-TIP-PROD
+              MOVE ECT1-DIVISA                 TO WS-DIVISA
+
+              IF ECT1-NUMERO-CUENTA    NOT EQUAL SPACES AND
+                 ECT1-NUMERO-CUENTA    NOT EQUAL ZEROES AND
+                 ECT1-NUMERO-CUENTA    NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+            END-IF
+           MOVE WS-CONT                        TO KNPG-S-CANT-REG
+           .
+      ******************************************************************
+      *                  202041-VALIDAR-NUMERO-CEL                     *
+      ******************************************************************
+       202041-VALIDAR-NUMERO-CEL.
+
+           INITIALIZE BGECDPE
+           MOVE 'C1'                      TO BDPE-OPCION
+           MOVE ECT1-NUMERO-CUENTA(1:4)   TO BDPE-ENT-ENT
+           MOVE ECT1-NUMERO-CUENTA(5:4)   TO BDPE-OFI-ENT
+           MOVE ECT1-NUMERO-CUENTA(11:10) TO BDPE-CTA-ENT
+      *
+           CALL RUT-BG7CDPE0 USING BGECDPE
+      *
+           IF (BDPE-RETORNO  = CTE-RETORNO-OK)
+              CONTINUE
+           ELSE
+            IF (BDPE-RETORNO  = '10')
+              MOVE '095-'                     TO WS-CONTENIDO-IND
+              MOVE 'VALIDA DEPOSITO ELECTRO'  TO WS-CONTENIDO-TOT
+              MOVE 'ERROR 10 '                TO WS-CONTENIDO-TOT(26:)
+              MOVE  BDPE-CODI-ERROR           TO WS-CONTENIDO-TOT(36:)
+              MOVE  BDPE-DES1-ERROR           TO WS-CONTENIDO-TOT(46:)
+              MOVE  BDPE-DES2-ERROR           TO WS-CONTENIDO-TOT(66:)
+              PERFORM 31-ESCRIBE-COLA-TS
+            ELSE
+              MOVE '0056'                     TO KNPG-S-COD-RETORNO
+              MOVE BDPE-CODI-ERROR            TO KNPG-S-UBI-ERROR(1:7)
+              MOVE BDPE-DES1-ERROR            TO KNPG-S-UBI-ERROR(9:22)
+              MOVE BDPE-DES2-ERROR            TO KNPG-S-DET-MSG(1:)
+              PERFORM 998-FINAL
+            END-IF
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *       RUTINA EN LA CUAL SE INVOCA AL LISTADO DE CDT'S          *
+      *----------------------------------------------------------------*
+       230000-TRAE-SALDOS-CDTS .
+
+           INITIALIZE                             ECD2-DATOS-ENTRADA
+           SET  PD-CDTS                        TO TRUE
+
+           MOVE KNPG-CAA-FECHA-OPER2           TO ECD2-FECH-OPERAC
+           MOVE WS-NUMPRO(WS-CONT)             TO ECD2-NUMPRO
+           MOVE WS-SUBPRO(WS-CONT)             TO ECD2-SUBPRO
+           MOVE KNPG-CAA-HORA-TRANSED          TO ECD2-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2           TO ECD2-FECH-CONTAB
+           MOVE KNPG-CAA-USERID                TO ECD2-USUARIO
+           MOVE KNPG-CAA-TERMINAL              TO ECD2-TERMINAL
+           MOVE '01'                           TO ECD2-IND-LISTA
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMCD)
+                COMMAREA(ECD2-KNDCMCD2)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF ECD2-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202023-MUEVE-DATOS-CDTS
+              ELSE
+                 IF WS-LIS-CDTS EQUAL 0
+                    MOVE SPACES                TO WS-DATOS-SAL-ER
+                    MOVE '60'                  TO KNPG-COD-ERR1
+                    MOVE ECD2-COD-RESPUESTA    TO KNPG-COD-ERR2
+                    MOVE ECD2-COD-ERROR        TO KNPG-COD-ERR3
+                    MOVE ECD2-VALOR-ERROR-UNO  TO KNPG-DES-ERR1
+                    MOVE 'EN EL PROGRAMA CDT ' TO KNPG-DES-ERR2
+                    MOVE 'CD'                  TO KNPG-ERR-TPRO
+                    MOVE PGM-KN2CBMPC          TO KNPG-ERR-PRGL
+                    MOVE KNPG-NUMERO-CL        TO KNPG-ERR-CCLI
+                    MOVE 1                     TO WS-LIS-CDTS
+                    PERFORM 340-GRABA-REG-ERR
+                 END-IF
+              END-IF
+           ELSE
+              MOVE SPACES                      TO WS-DATOS-SAL-ER
+              MOVE '60'                        TO KNPG-COD-ERR1
+              MOVE EIBRESP                     TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'      TO KNPG-DES-ERR1
+              MOVE ' DE CDTS            '      TO KNPG-DES-ERR2
+              MOVE 'CD'                        TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBMPC                TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *   RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE CDT'S A SALIDA   *
+      *----------------------------------------------------------------*
+       202023-MUEVE-DATOS-CDTS.
+      *
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+           IF ECD2-ESTADO          EQUAL 'A' OR
+              ECD2-ESTADO          EQUAL 'L' OR
+              ECD2-ESTADO          EQUAL 'G' OR
+              ECD2-ESTADO          EQUAL 'X'
+      *
+              MOVE ECD2-NUMERO-CUENTA          TO KNPG-NUM-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+
+              IF ECD2-SALDO-ACTUAL IS NUMERIC
+                 MOVE ECD2-SALDO-ACTUAL        TO KNPG-SALDO-PUNTUAL
+              END-IF
+
+              IF ECD2-SALDO-DISPON IS NUMERIC
+                MOVE ECD2-SALDO-DISPON         TO KNPG-SALDO-DISPONIBLE
+              END-IF
+
+              MOVE ECD2-DIVISA                 TO KNPG-DIVISA
+              MOVE ECD2-ALIAS                  TO KNPG-ALIAS
+              MOVE ECD2-FAVORITO               TO KNPG-IND-FAVORITO
+              MOVE ECD2-ESTADO                 TO KNPG-ESTADO
+              MOVE ECD2-TIPO-CUENTA            TO KNPG-TIPO-PRODUCTO
+              MOVE EAP1-SUBPRO(WS-CONT)        TO KNPG-TIPO-PRODUCTO
+              MOVE 'CDTS            '          TO KNPG-TIPO-CONTRATO
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE ECD2-ESTADO                 TO WS-EST-PROD
+              MOVE ECD2-NUMERO-CUENTA          TO WS-NUM-PROD
+              MOVE ECD2-TIPO-CUENTA            TO WS-TIP-PROD
+              MOVE ECD2-DIVISA                 TO WS-DIVISA
+
+              PERFORM 340-GRABAR-SALIDA
+      *
+              IF WS-NUMERO-CUENTA-CDT  NOT EQUAL SPACES AND
+                 WS-NUMERO-CUENTA-CDT  NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+           ELSE
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE WS-ESTADO-CDT               TO WS-EST-PROD
+              MOVE WS-NUMERO-CUENTA-CDT        TO WS-NUM-PROD
+              MOVE WS-TIPO-CUENTA-CDT          TO WS-TIP-PROD
+              MOVE WS-DIVISA-CDT               TO WS-DIVISA
+
+              IF WS-NUMERO-CUENTA-CDT  NOT EQUAL SPACES AND
+                 WS-NUMERO-CUENTA-CDT  NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+           END-IF
+           MOVE WS-ITEM-CDT                    TO KNPG-S-CANT-REG
+           .
+      ******************************************************************
+      *                  230000-TRAE-SALDOS-PRESTAMOS
+      ******************************************************************
+       230000-TRAE-SALDOS-PRESTAMOS .
+
+           INITIALIZE                             EPR3-DATOS-ENTRADA
+           SET  PD-CREDITOS                    TO TRUE
+
+           MOVE KNPG-CAA-FECHA-OPER2           TO EPR3-FECH-OPERAC
+           MOVE WS-NUMPRO(WS-CONT)             TO EPR3-NUMPRO
+           MOVE WS-SUBPRO(WS-CONT)             TO EPR3-SUBPRO
+           MOVE KNPG-CAA-FECHA-CONT2           TO EPR3-FECH-CONTAB
+           MOVE KNPG-CAA-USERID                TO EPR3-USUARIO
+           MOVE KNPG-CAA-TERMINAL              TO EPR3-TERMINAL
+           MOVE '01'                           TO EPR3-IND-LISTA
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMPR)
+                COMMAREA(EPR3-KNDCMPR3)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF EPR3-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202033-MUEVE-DATOS-PRESTAMOS
+              ELSE
+                 IF WS-LIS-PRES EQUAL 0
+                    MOVE SPACES                TO WS-DATOS-SAL-ER
+                    MOVE '60'                  TO KNPG-COD-ERR1
+                    MOVE EPR3-COD-RESPUESTA    TO KNPG-COD-ERR2
+                    MOVE EPR3-COD-ERROR        TO KNPG-COD-ERR3
+                    MOVE EPR3-VALOR-ERROR-UNO  TO KNPG-DES-ERR1
+                    MOVE 'EN EL PROGRAMA CRED' TO KNPG-DES-ERR2
+                    MOVE 'CR'                  TO KNPG-ERR-TPRO
+                    MOVE PGM-KN2CBM03          TO KNPG-ERR-PRGL
+                    MOVE KNPG-NUMERO-CL        TO KNPG-ERR-CCLI
+                    MOVE 1                     TO WS-LIS-PRES
+                    PERFORM 340-GRABA-REG-ERR
+                 END-IF
+              END-IF
+           ELSE
+              MOVE SPACES                      TO WS-DATOS-SAL-ER
+
+              MOVE '60'                        TO KNPG-COD-ERR1
+              MOVE EIBRESP                     TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'      TO KNPG-DES-ERR1
+              MOVE ' DE PRESTAMOS       '      TO KNPG-DES-ERR2
+              MOVE 'CR'                        TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM03                TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *   RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE CDT'S A SALIDA   *
+      *----------------------------------------------------------------*
+       202033-MUEVE-DATOS-PRESTAMOS.
+      *
+            MOVE SPACES                        TO KNPG-TIPO-PRODUCTO
+                                                  KNPG-TIPO-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+                                                  KNPG-NUM-CONTRATO
+                                                  KNPG-ESTADO
+                                                  KNPG-DIVISA
+                                                  KNPG-ALIAS
+                                                  KNPG-IND-FAVORITO
+            MOVE SPACES                        TO KNPG-NOMB-FRANQUICIA
+            MOVE ZEROES                        TO KNPG-SALDO-PUNTUAL
+                                                  KNPG-SALDO-DISPONIBLE
+                                                  KNPG-SALDO-CANJE
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF WS-ESTADO-PROD(WS-CONT) EQUAL 'A1'
+               MOVE EPR3-NUMERO-PRESTAMO       TO KNPG-NUM-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+               IF EPR3-SALDO-ADEU      IS NUMERIC
+                  MOVE EPR3-SALDO-ADEU         TO KNPG-SALDO-DISPONIBLE
+               END-IF
+      *NJM03 MOVE ZEROES                       TO KNPG-SALDO-DISPONIBLE
+               MOVE EPR3-PAGO-MIN              TO KNPG-SALDO-PUNTUAL
+               MOVE EPR3-DIVISA                TO KNPG-DIVISA
+               MOVE EPR3-ALIAS                 TO KNPG-ALIAS
+               MOVE EPR3-FAVORITO              TO KNPG-IND-FAVORITO
+               MOVE EPR3-ESTADO                TO KNPG-ESTADO
+               MOVE 'PR'                       TO KNPG-TIPO-PRODUCTO
+
+               IF EAP1-SUBPRO(WS-CONT) EQUAL 'CB' OR
+                  EAP1-SUBPRO(WS-CONT) EQUAL 'CD' OR
+                  EAP1-SUBPRO(WS-CONT) EQUAL 'CI'
+                  MOVE 'CREDITO         '      TO KNPG-TIPO-CONTRATO
+               ELSE
+                  MOVE 'CREDITO         '      TO KNPG-TIPO-CONTRATO
+               END-IF
+
+               MOVE SPACES                     TO WS-UPDATE-APR
+
+               MOVE EPR3-ESTADO                TO WS-EST-PROD
+               MOVE EPR3-NUMERO-PRESTAMO       TO WS-NUM-PROD
+               MOVE EAP1-SUBPRO(WS-CONT)       TO WS-TIP-PROD
+               MOVE EPR3-DIVISA                TO WS-DIVISA
+
+               PERFORM 340-GRABAR-SALIDA
+
+               IF EPR3-NUMERO-PRESTAMO           NOT EQUAL SPACES AND
+                  EPR3-NUMERO-PRESTAMO           NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+      *  SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+               MOVE SPACES                     TO WS-UPDATE-APR
+               MOVE EPR3-ESTADO                TO WS-EST-PROD
+               MOVE EPR3-NUMERO-PRESTAMO       TO WS-NUM-PROD
+               MOVE EPR3-TIPO-PRESTAMO         TO WS-TIP-PROD
+               MOVE EPR3-DIVISA                TO WS-DIVISA
+
+               IF EPR3-NUMERO-PRESTAMO  NOT EQUAL SPACES AND
+                  EPR3-NUMERO-PRESTAMO  NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+            END-IF
+            MOVE WS-CONT                       TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*
+      *       RUTINA EN LA CUAL SE INVOCA AL LISTADO DE TARJETAS       *
+      *----------------------------------------------------------------*
+       230000-TRAE-SALDOS-TARJETAS .
+
+           INITIALIZE                             ETC4-DATOS-ENTRADA
+           SET  PD-TARJETAS                    TO TRUE
+
+           MOVE WS-SUBPRO(WS-CONT)             TO ETC4-SUBPRO
+           MOVE WS-NUMPRO(WS-CONT)             TO ETC4-NUMPRO
+           MOVE KNPG-CAA-FECHA-OPER2           TO ETC4-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED          TO ETC4-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2           TO ETC4-FECH-CONTAB
+           MOVE '01'                           TO ETC4-IND-LISTA
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMTC)
+                COMMAREA(ETC4-KNDCMTC4)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF ETC4-COD-RESPUESTA EQUAL '00' OR '  '
+                 MOVE  SPACES                  TO WS-TEMPORAL
+                 PERFORM 202043-MUEVE-DATOS-TJTS
+              ELSE
+                 IF WS-LIS-TARJ EQUAL 0
+                    MOVE SPACES                TO WS-DATOS-SAL-ER
+                    MOVE '60'                  TO KNPG-COD-ERR1
+                    MOVE ETC4-COD-RESPUESTA    TO KNPG-COD-ERR2
+                    MOVE ETC4-COD-ERROR        TO KNPG-COD-ERR3
+                    MOVE ETC4-VALOR-ERROR-UNO  TO KNPG-DES-ERR1
+                    MOVE 'EN EL LISTADOR TARJ' TO KNPG-DES-ERR2
+                    MOVE 'TC'                  TO KNPG-ERR-TPRO
+                    MOVE PGM-KN2CBM04          TO KNPG-ERR-PRGL
+                    MOVE KNPG-NUMERO-CL        TO KNPG-ERR-CCLI
+                    MOVE 1                     TO WS-LIS-TARJ
+                    PERFORM 340-GRABA-REG-ERR
+                 END-IF
+              END-IF
+           ELSE
+              MOVE SPACES                      TO WS-DATOS-SAL-ER
+
+              MOVE '60'                        TO KNPG-COD-ERR1
+              MOVE EIBRESP                     TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'      TO KNPG-DES-ERR1
+              MOVE ' DE TARJETAS        '      TO KNPG-DES-ERR2
+              MOVE 'TC'                        TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBM04                TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE TARJETAS A LA SALIDA*
+      *----------------------------------------------------------------*
+       202043-MUEVE-DATOS-TJTS.
+      *
+           MOVE SPACES                         TO KNPG-TIPO-PRODUCTO
+                                                  KNPG-TIPO-CONTRATO
+                                                  KNPG-NUM-CONTRATO
+                                                  KNPG-NUM-PRODUCTO
+                                                  KNPG-ESTADO
+                                                  KNPG-DIVISA
+                                                  KNPG-ALIAS
+                                                  KNPG-IND-FAVORITO
+           MOVE SPACES                         TO KNPG-NOMB-FRANQUICIA
+           MOVE ZEROS                          TO KNPG-SALDO-PUNTUAL
+                                                  KNPG-SALDO-DISPONIBLE
+                                                  KNPG-SALDO-CANJE
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+           IF ETC4-ESTADO        EQUAL 'A' OR
+              ETC4-ESTADO        EQUAL 'B'
+      *
+              MOVE EAP1-NUMPRO(WS-CONT)        TO KNPG-NUM-CONTRATO
+              MOVE EAP1-SUBPRO(WS-CONT)        TO KNPG-NUM-PRODUCTO
+      *
+              IF KNPG-NUM-PRODUCTO IS EQUAL SPACES OR LOW-VALUES
+                 MOVE ZEROES                   TO KNPG-NUM-PRODUCTO
+              ELSE
+                 MOVE ETC4-NUMERO-TARJ         TO KNPG-NUM-PRODUCTO
+              END-IF
+      *
+              IF WS-CONT = 1
+                 MOVE  ETC4-NUMERO-TARJ        TO WS-TEMPORAL
+              END-IF
+      *
+              IF ETC4-SALDO-ACT    IS NUMERIC
+                 IF ETC4-TJE-AMPAR EQUAL 'N' OR
+      *COL01-I
+                    ETC4-TJE-AMPAR EQUAL 'S' OR
+      *COL01-F
+                    (WS-TEMPORAL NOT EQUAL TO SPACES  OR
+                     WS-TEMPORAL EQUAL TO LOW-VALUES)
+                    MOVE ETC4-SALDO-ACT        TO KNPG-SALDO-PUNTUAL
+                 ELSE
+                    MOVE ZEROES                TO KNPG-SALDO-PUNTUAL
+                 END-IF
+              END-IF
+
+              IF ETC4-CUPO-TOT     IS NUMERIC
+                MOVE ETC4-CUPO-TOT             TO KNPG-SALDO-DISPONIBLE
+              END-IF
+
+              MOVE ETC4-DIVISA                 TO KNPG-DIVISA
+              MOVE ETC4-ALIAS                  TO KNPG-ALIAS
+              MOVE ETC4-FAVORITO               TO KNPG-IND-FAVORITO
+              MOVE ETC4-ESTADO                 TO KNPG-ESTADO
+              MOVE EAP1-SUBPRO(WS-CONT)        TO KNPG-TIPO-PRODUCTO
+      *
+              IF EAP1-SUBPRO(WS-CONT) EQUAL 'CB' OR
+                 EAP1-SUBPRO(WS-CONT) EQUAL 'CD' OR
+                 EAP1-SUBPRO(WS-CONT) EQUAL 'CI' OR
+                 EAP1-SUBPRO(WS-CONT) EQUAL 'CT' OR
+                 EAP1-SUBPRO(WS-CONT) EQUAL 'TC'
+                 MOVE 'TARJETA DE CREDITO'     TO KNPG-TIPO-CONTRATO
+              END-IF
+              IF EAP1-SUBPRO(WS-CONT) EQUAL 'CR'
+                 MOVE 'CUPO ROTATIVO     '     TO KNPG-TIPO-CONTRATO
+              END-IF
+              MOVE SPACES                      TO WS-UPDATE-APR
+
+              MOVE ETC4-ESTADO                 TO WS-EST-PROD
+              MOVE EAP1-NUMPRO(WS-CONT)        TO WS-NUM-PROD
+              MOVE EAP1-SUBPRO(WS-CONT)        TO WS-TIP-PROD
+              MOVE ETC4-DIVISA                 TO WS-DIVISA
+              MOVE ETC4-DESCRIPCION            TO KNPG-NOMB-FRANQUICIA
+
+              PERFORM 340-GRABAR-SALIDA
+
+              IF ETC4-IDENTI-TARJETA  NOT EQUAL SPACES AND
+                 ETC4-IDENTI-TARJETA  NOT EQUAL LOW-VALUES
+
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+           ELSE
+              MOVE SPACES                      TO WS-UPDATE-APR
+              MOVE ETC4-ESTADO                 TO WS-EST-PROD
+              MOVE ETC4-IDENTI-TARJETA         TO WS-NUM-PROD
+              MOVE ETC4-TIPO-TARJETA           TO WS-TIP-PROD
+              MOVE ETC4-DIVISA                 TO WS-DIVISA
+
+              IF ETC4-IDENTI-TARJETA NOT EQUAL SPACES AND
+                 ETC4-IDENTI-TARJETA NOT EQUAL LOW-VALUES
+                 PERFORM 202012-ACTUALIZA-APR
+              END-IF
+           END-IF
+
+           MOVE WS-CONT                        TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*
+      *        RUTINA EN LA CUAL SE INVOCA AL LISTADO DE FONDOS        *
+      *----------------------------------------------------------------*
+       230000-TRAE-SALDOS-FONDOS .
+      *
+           INITIALIZE                             EFD5-DATOS-ENTRADA
+           SET  PD-FONDOS                      TO TRUE
+
+           MOVE WS-SUBPRO(WS-CONT)             TO EFD5-SUBPRO
+           MOVE WS-NUMPRO(WS-CONT)             TO EFD5-NUMPRO
+           MOVE WS-FAVORI(WS-CONT)             TO EFD5-FAVORI
+           MOVE WS-SEUDON(WS-CONT)             TO EFD5-SEUDON
+           MOVE KNPG-CAA-FECHA-OPER2           TO EFD5-FECH-OPERAC
+           MOVE KNPG-CAA-HORA-TRANSED          TO EFD5-HORA-OPERAC
+           MOVE KNPG-CAA-FECHA-CONT2           TO EFD5-FECH-CONTAB
+           MOVE 'MNET'                         TO EFD5-CANAL
+           MOVE '01'                           TO EFD5-IND-LISTA
+           MOVE 'KNB5'                         TO EFD5-COLA-RESP(1:4)
+           MOVE KNPG-CAA-TERMINAL              TO EFD5-COLA-RESP(5:4)
+           MOVE KNPG-NUMERO-CL                 TO EFD5-COLA-RESP(9:8)
+      *
+           EXEC CICS
+                LINK PROGRAM(PGM-KN2CBMFD)
+                COMMAREA(REG-KNDCMFD5)
+           END-EXEC
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)
+              IF EFD5-COD-RESPUESTA EQUAL '00' OR '  '
+                 PERFORM 202052-FECHA-HABIL
+                 PERFORM 202053-MUEVE-DATOS-FONDOS
+              ELSE
+                 IF WS-LIS-FNDS EQUAL 0
+                    MOVE SPACES                TO WS-DATOS-SAL-ER
+                    MOVE '60'                  TO KNPG-COD-ERR1
+                    MOVE EFD5-COD-RESPUESTA    TO KNPG-COD-ERR2
+                    MOVE EFD5-COD-ERROR        TO KNPG-COD-ERR3
+                    MOVE EFD5-VALOR-ERROR-UNO  TO KNPG-DES-ERR1
+                    MOVE 'EN EL LISTADOR FOND' TO KNPG-DES-ERR2
+                    MOVE 'FC'                  TO KNPG-ERR-TPRO
+                    MOVE PGM-KN2CBMFD          TO KNPG-ERR-PRGL
+                    MOVE KNPG-NUMERO-CL        TO KNPG-ERR-CCLI
+                    MOVE 1                     TO WS-LIS-FNDS
+                    PERFORM 340-GRABA-REG-ERR
+                 END-IF
+              END-IF
+           ELSE
+              MOVE SPACES                      TO WS-DATOS-SAL-ER
+              MOVE '60'                        TO KNPG-COD-ERR1
+              MOVE EIBRESP                     TO KNPG-COD-ERR3
+              MOVE 'LLAMANDO EL LISTADOR'      TO KNPG-DES-ERR1
+              MOVE ' DE CUENTAS         '      TO KNPG-DES-ERR2
+              MOVE 'FC'                        TO KNPG-ERR-TPRO
+              MOVE PGM-KN2CBMFD                TO KNPG-ERR-PRGL
+              MOVE KNPG-NUMERO-CL              TO KNPG-ERR-CCLI
+              PERFORM 340-GRABA-REG-ERR
+           END-IF
+           .
+      *----------------------------------------------------------------*
+      *RUTINA PARA MOVER LOS DATOS DEL LISTADOR DE TARJETAS A LA SALIDA*
+      *----------------------------------------------------------------*
+       202053-MUEVE-DATOS-FONDOS.
+      *
+      *SE ENVIAN SOLO LOS CONTRATOS QUE ESTEN EN ESTADO 'A' ACTIVOS
+            IF EFD5-ESTADO  EQUAL 'A' OR
+               EFD5-ESTADO  EQUAL 'B'
+      *
+               MOVE EFD5-NUMERO-FONDO          TO KNPG-NUM-CONTRATO
+               MOVE KNPG-NUM-CONTRATO          TO WS-FONDO-01
+      *
+               IF EFD5-CTA-ASOCIADA EQUAL SPACES OR LOW-VALUES
+                                               OR CON-CEROS
+                  MOVE SPACES                  TO KNPG-NUM-PRODUCTO
+               ELSE
+                  MOVE EFD5-CTA-ASOCIADA       TO KNPG-NUM-PRODUCTO
+               END-IF
+      *
+               IF EFD5-MONTO-ACT IS NUMERIC
+                  MOVE EFD5-MONTO-ACT          TO KNPG-SALDO-PUNTUAL
+               END-IF
+               MOVE ZEROES                     TO KNPG-SALDO-DISPONIBLE
+      *
+               IF EFD5-DISPO-CTA IS NUMERIC
+                  MOVE EFD5-DISPO-CTA          TO KNPG-SALDO-CANJE
+               ELSE
+                  MOVE ZEROES                  TO KNPG-SALDO-CANJE
+               END-IF
+      *
+               IF EFD5-HORARIO  EQUAL SPACES OR LOW-VALUES
+                  MOVE SPACES                  TO KNPG-NOMB-FRANQUICIA
+               ELSE
+                  MOVE EFD5-HORARIO            TO KNPG-NOMB-FRANQUICIA
+                  MOVE EFD5-HORARIO2         TO KNPG-NOMB-FRANQUICIA(9:)
+               END-IF
+      *
+               MOVE SPACES                     TO KNPG-DIVISA
+               MOVE WS-DIA-HABIL               TO KNPG-DIVISA(1:1)
+               MOVE EFD5-IND-ABIERTO           TO KNPG-DIVISA(2:1)
+      *
+               MOVE EFD5-DESCRIPCION           TO KNPG-ALIAS
+               MOVE EFD5-FAVORITO              TO KNPG-IND-FAVORITO
+               MOVE EFD5-ESTADO                TO KNPG-ESTADO
+               MOVE EFD5-TIPO-FONDO            TO KNPG-TIPO-PRODUCTO
+      *
+               MOVE 'FONDOS D INVERSION'       TO KNPG-TIPO-CONTRATO
+               MOVE SPACES                     TO WS-UPDATE-APR
+               MOVE EFD5-ESTADO                TO WS-EST-PROD
+               MOVE EFD5-NUMERO-FONDO          TO WS-NUM-PROD
+               MOVE EFD5-TIPO-FONDO            TO WS-TIP-PROD
+               MOVE EFD5-DIVISA                TO WS-DIVISA
+      *
+               IF WS-FONDO-01  EQUAL  WS-FONDO-02
+                  CONTINUE
+               ELSE
+                  PERFORM 340-GRABAR-SALIDA
+                  MOVE WS-FONDO-01  TO  WS-FONDO-02
+               END-IF
+      *
+               IF WS-NUMERO-FONDO   NOT EQUAL SPACES AND
+                  WS-NUMERO-FONDO   NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+      *SI EL ESTADO ES DIFERENTE DE ACTIVO
+            ELSE
+               MOVE SPACES                     TO WS-UPDATE-APR
+               MOVE WS-ESTADO                  TO WS-EST-PROD
+               MOVE WS-NUMERO-FONDO            TO WS-NUM-PROD
+               MOVE WS-TIPO-FONDO              TO WS-TIP-PROD
+               MOVE WS-DIVISA-FD               TO WS-DIVISA
+
+               IF WS-NUMERO-FONDO  NOT EQUAL SPACES AND
+                  WS-NUMERO-FONDO  NOT EQUAL LOW-VALUES
+                  PERFORM 202012-ACTUALIZA-APR
+               END-IF
+               ADD 1                           TO WS-CONT-FD
+            END-IF
+            MOVE WS-CONT-FD                    TO KNPG-S-CANT-REG
+           .
+      *----------------------------------------------------------------*
+

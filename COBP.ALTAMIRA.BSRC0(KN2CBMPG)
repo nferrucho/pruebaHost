@@ -1,0 +1,1180 @@
+000100*//START-PROGRAM                                                  00000100
+000100**---------------------------------------------------------------*00000100
+000200*             IDENTIFICATION DIVISION                            *00000200
+000300*----------------------------------------------------------------*00000300
+000400 IDENTIFICATION DIVISION.                                         00000400
+000500 PROGRAM-ID. KN2CBMPG.                                            00000500
+000600 AUTHOR.     VYGTS - WILSON ANDRADE.                              00000600
+000700 DATE-WRITTEN. 2012-01-27.                                        00000700
+000800*----------------------------------------------------------------*00000800
+000900*    DESCRIPCION : PROGRAMA PARA GENERAR LOS DATOS DE LA POSICION*00000900
+001000*                  GLOBAL PARA EL ACCESO DESDE LOS SERVICIOS QUE *00001000
+001100*                  VIENEN DESDE  SOA.                            *00001100
+001200*                  ACCEDE A PERSONAS POR LOS NUMEROS DE CONTRATOS*00001200
+      *                  QUE TIENE CADA CLIENTE                        *00001300
+001800*----------------------------------------------------------------*00001800
+      *----------------------------------------------------------------*
+      *        L O G    D E   M O D I F I C A C I O N E S              *
+      *----------------------------------------------------------------*
+      *  AUTOR   FECHA          DESCRIPCION                            *
+      * ------- -------- --------------------------------------------- *
+      * C342045 21/10/2013 SE AGREGA PASO QUE REALIZA LA VALIDACION DEL*
+      * NJM01              NOMBRE COMPLETO DEL CLIENTE Y NOMBRE ALIAS  *
+      *                    Y VALIDA CAMPO A CAMPO QUE NO PRESENTE UN   *
+      *                    CARACTER EXTRA#O                            *
+      * CE18871 21/10/2013 SE CAMBIA NOMBRE DE COLA PARA ESCRIBIR EN EL*
+      *                    cics por incidencias.
+      * CE30002 06/03/2014 SE CAMBIA EL CAMPO DE ENTRADA CNUSERID PARA *
+      * LAU01              CONSULTAR Y DAR DE ALTA REGISTRO EN KNDTAPR *
+      *----------------------------------------------------------------*
+      * CE30002 13/03/2014 SE AGREGA PERFORM PARA VALIDACION DEL       *
+      * LAU02              EN LA TABLA KNDTUSU CON DATOS DE PERSONAS   *
+      *----------------------------------------------------------------*
+      * CE14207 28/04/2014 GP10578 - DEPOSITO ELECTRONICO. MANEJO DE   *
+      * NOVA01             TIPO DE PRODUCTO 'DE'.                      *
+      *----------------------------------------------------------------*
+      * C342045 25/11/2013 SE CAMBIA LA RUTINA CN8CE030 QUE REALIZA EL *
+      * NJM02              LLAMADO DE LOS PRODUCTOS POR CLIENTE A LA   *
+      *                    NUEVA RUTINA CN8CEBM3                       *
+      *-------- ---------- --------------------------------------------*
+      * C342045 08/01/2015 DEPURAR CONSULTA DATOS DEL CLIENTE PARA QUE *
+      * NJM03              SEA CONSULTADO EN LA RUTINA PRINCIPAL       *
+      *----------------------------------------------------------------*
+      * COL01   29/03/2017 SE CONDICIONA ESCRITURA DE TRACE PARA QUE NO*
+      * NJMG               ESCRIBA EN PRODUCCION  - COL513517S609458   *
+      *----------------------------------------------------------------*
+      * BBVA01  14/08/2019 SE AJUSTA LA VALIDACION DE CREDITOS EN LA   *
+      * COL02              POSICON GLOBAL B-MOVIL GESI COL510219I001178*
+      *----------------------------------------------------------------*
+      * BBVA01  28/09/2020 MODIFICAR LA CONSULTA DEL CURSOR POR ALTO   *
+      * COL03   MN-196     CONSUMO EN LA TX OZP2                       *
+      *----------------------------------------------------------------*
+      *----------------------------------------------------------------*
+      * CMC     27/01/2021 MN-644 Mantenimiento Ajuste de APR *
+      * COL04                                                          *
+      *----------------------------------------------------------------*
+001930*----------------------------------------------------------------*00002800
+001940*                 ENVIRONMENT DIVISION                           *00002900
+001950*----------------------------------------------------------------*00003000
+001960 ENVIRONMENT DIVISION.                                            00003100
+001970 CONFIGURATION SECTION.                                           00003200
+001980 SOURCE-COMPUTER.                                                 00003300
+001990     IBM-3090.                                                    00003400
+002000 OBJECT-COMPUTER.                                                 00003500
+002100     IBM-3090.                                                    00003600
+002200*----------------------------------------------------------------*00003700
+002300*                  DATA DIVISION                                 *00003800
+002400*----------------------------------------------------------------*00003900
+002500 DATA DIVISION.                                                   00004000
+002600 WORKING-STORAGE SECTION.                                         00004100
+
+0000  *---------------- Copy Para La Tabla CNDTAPR --------------------*
+           EXEC SQL
+                INCLUDE SQLCA
+           END-EXEC.
+0000  *---------------- Copy Para La Tabla CNDTAPR --------------------*
+           EXEC SQL INCLUDE KNGVAPRP END-EXEC.
+      *----------------------------------------------------------------*
+      * COPY DE COMUNICACION CON EL PROGRAMA ABC DEL CONTROL DE ERRORES*
+      *----------------------------------------------------------------*
+           COPY QGECABC.
+      *----------------------------------------------------------------*
+      * COPY DE COMUNICACION PARA TRAER DATOS BASICOS DE PERSONAS      *
+      *----------------------------------------------------------------*
+           COPY PEWC1000.
+      *----------------------------------------------------------------*
+      *             COPY AREA DE TRABAJO DE COLECTOR CN8CC300          *
+      *----------------------------------------------------------------*
+       01 CNDCC305.
+          COPY CNDCC305.
+      *----------------------------------------------------------------*
+      * COPY DE ENTRADA Y SALIDA PARA RUTINA CN8CE030                  *
+      *----------------------------------------------------------------*
+       01 REG-CNDCE030.
+           COPY CNDCE030.
+      *----------------------------------------------------------------*
+      *      COPY DE SALIDA DONDE SE LEERA LA RESPUESTA DE ASUNTOS     *
+      *----------------------------------------------------------------*
+       COPY CNDCE031.
+      *----------------------------------------------------------------*
+      *     COPY AREA DE TRABAJO RUTINA KN7CBM60 ALTA KNDTAPR          *
+      *----------------------------------------------------------------*
+       01 REG-KNWCBM60.
+          COPY KNWCBM60.
+      *----------------------------------------------------------------*
+      *             AREA DE ERRORES PARA LOG DE ARQUITECTURA           *
+      *----------------------------------------------------------------*
+       COPY CNDCERR0.
+      *----------------------------------------------------------------*
+      *     COPY AREA DE TRABAJO RUTINA CN8CR800 CALCULO FECHAS        *
+      *----------------------------------------------------------------*
+       COPY CNDCR800.
+      *----------------------------------------------------------------*
+      *               AREA DE TRABAJO DE RUTINA   KN7CBM50
+      *----------------------------------------------------------------*
+       01 REG-KNWCAPR0.
+          COPY KNWCAPR0.
+      *----------------------------------------------------------------*
+      *               AREA DE TRABAJO DE RUTINA   KN7CB095
+      *----------------------------------------------------------------*
+       01 REG-KNDCB095.
+          COPY KNDCB095.
+      *LAU02-I
+      *----------------------------------------------------------------*
+      *             COPY AREA DE TRABAJO DE LA RUTINA KN7CBUSU
+      *----------------------------------------------------------------*
+       01 KNDBMUSU-01.
+          COPY KNDBMUSU.
+      *LAU02-F
+      *NOVA01-I
+      * COPY PARA LA RUTINA BG7CDPE0 - CONSULTA DE NUMERO CELULAR
+       COPY BGECDPE.
+      *NOVA01-F
+      *----------------------------------------------------------------*
+      * DEFINICION DE VALIABLES APLICATIVAS                            *
+      *----------------------------------------------------------------*
+       01 WS-VARIABLES.
+           05 WS-E03-TS.
+      *       10 TS-NOMBRE-E03           PIC X(03) VALUE 'BM3'.
+      *       10 TS-SUFIFO-E03.
+      *          15 TS-SUFIJO-E03        PIC 9(05) VALUE ZEROES.
+      *VYG001-INI
+      *       10 TS-NOMBRE-E03           PIC X(03) VALUE 'BM3'.
+      *       10 TS-SUFIFO-E03.
+      *          15 TS-SUFIJO-E03        PIC 9(05) VALUE ZEROES.
+              10 TS-NOMBRE-E03           PIC X(08).
+      *VYG001-FIN
+           05 WT-MAX-CNDTAPR1            PIC S9(04) COMP VALUE 0.
+           05 NOMBRE-DEL-CICS            PIC X(04) VALUE SPACES.
+           05 SW-FIN-CUR-APR1            PIC 9(01) VALUE 0.
+           05 WS-ITEM-E03                PIC S9(04) COMP VALUE ZEROES.
+           05 SW-FIN-ASUNTOS-E03         PIC 9(01) VALUE 0.
+           05 W-ESTADO-ASUNTO-APR        PIC X(02) VALUE SPACES.
+           05 W-E03-ASUNTO-KEY.
+              10 W-E03-TIPO-K            PIC X(02).
+              10 W-E03-ASUNTO-K          PIC X(35).
+           05 WS-TSLENGTH                PIC S9(04) COMP.
+           05 WS-TOTAL-ASUNTOS           PIC S9(04) COMP VALUE 0.
+           05 WS-PRODUCTOS.
+              10 WS-TOTAL-PROD           PIC 9(04) VALUE ZEROS.
+           05 WS-HORA.
+              10 WS-HORA-OPERA           PIC X(06) VALUE SPACES.
+              10 WS-HORA-OPERA2          PIC 9(06) VALUE 0.
+NJM01 *
+NJM01      05 WS-NOMBRE-COMP             PIC X(60) VALUE SPACES.
+NJM01      05 I                          PIC 9(02) .
+NJM01      05 J                          PIC 9(02) .
+NJM01      05 I-T51                      PIC 9(02) VALUE ZEROES.
+NJM01      05 WS-NOMBRE-ANT              PIC X(60) VALUE SPACES.
+NJM01      05 WS-NOMBRE-DES              PIC X(60) VALUE SPACES.
+NJM01 *
+COL02      05 WS-VALIDA-CREHIPO          PIC X(06) VALUE SPACES.
+      *-------------------------- CONSTANTES --------------------------*
+       01 WS-CONSTANTES.
+          05 RUT-PE9C1000                PIC X(08) VALUE 'PE9C1000'.
+          05 RUT-KN7CB095                PIC X(08) VALUE 'KN7CB095'.
+          05 RUT-CN7CAPR0                PIC X(08) VALUE 'CN7CAPR0'.
+      *NJM02-INI
+      *   05 RUT-CN8CE030                PIC X(08) VALUE 'CN8CE030'.
+          05 RUT-CN8CEBM3                PIC X(08) VALUE 'CN8CEBM3'.
+      *NJM02-FIN
+          05 RUT-CN8CR800                PIC X(08) VALUE 'CN8CR800'.
+          05 RUT-KN7CBM50                PIC X(08) VALUE 'KN7CBM50'.
+LAU02     05 RUT-KN7CBUSU                PIC X(08) VALUE 'KN7CBUSU'.
+          05 RUT-KN7CBM60                PIC X(08) VALUE 'KN7CBM60'.
+      *NOVA01-I
+          05 RUT-BG7CDPE0                PIC X(08) VALUE 'BG7CDPE0'.
+      *NOVA01-F
+          05 CTE-MAXREG-E03              PIC 9(03) VALUE  152.
+          05 CTE-RETORNO-OK              PIC X(02) VALUE '00'.
+          05 CTE-RETORNO-NOK             PIC X(02) VALUE '99'.
+          05 CTE-CNE0701                 PIC X(07) VALUE 'CNE0701'.
+          05 CTE-MIL                     PIC 9(04) VALUE  8000.
+          05 CTE-NO                      PIC X(01) VALUE 'N'.
+      *NOVA01-I
+          05 WS-DE                       PIC X(02) VALUE 'DE'.          00007000
+      *NOVA01-F
+      *------------------------ PARAMETROS ----------------------------*
+       01 WS-PARAMETROS.
+          05 WS-CANAL-ENTRADA            PIC X(04) VALUE SPACES.
+          05 WS-COD-ENTIDAD              PIC X(04) VALUE SPACES.
+          05 WS-FECHA-OPERA              PIC X(10) VALUE SPACES.
+027800*----------------------------------------------------------------*00027800
+027800*       DEFINICION DE VARIABLES DE SALIDA DE RESPUESTA           *00027800
+      *----------------------------------------------------------------*02700000
+       01 WS-COLA-DC1.                                                  02700010
+          05 WS-LONG-DC1                 PIC S9(4) COMP VALUE ZEROES.   02700020
+          05 WS-TS.                                                     02700030
+             10 WS-PREFIJO-DC1           PIC X(4)  VALUE SPACES.        02700040
+             10 WS-SUFIJO-DC1            PIC X(4)  VALUE SPACES.        02700050
+          05 WS-CONTENIDO-DC1.                                          02700060
+             10 WS-NOMBRE-FORMATO        PIC X(8)   VALUE SPACES.       02700070
+             10 WS-CONT-FORMATO          PIC X(175) VALUE SPACES.       02700080
+      *-------------------------- SWITCHES ----------------------------*
+       01 SW-SWITCHES.
+          05 SW-ESCRIBE-TS               PIC X(01) VALUE 'N'.
+             88 NO-ESCRIBE                         VALUE 'N'.
+             88 SI-ESCRIBE                         VALUE 'S'.
+          05 SW-ENCONTRADO-ASUNTO-APR    PIC X(01) VALUE SPACES.
+             88 SW-ENCONTRADO-APR-SI               VALUE 'S'.
+             88 SW-ENCONTRADO-APR-NO               VALUE 'N'.
+021500*-------------- DEFINICION TABLA CNDTAPR1 -----------------------*00027400
+021600 01 WT-TABLA-APR1.                                                00027500
+021700    03 WT-TABLA-CNDTAPR1    OCCURS    01  TO 8000 TIMES           00027600
+021800                            DEPENDING     ON WT-MAX-CNDTAPR1      00027700
+                                  ASCENDING KEY IS WTAPR1-CNASUPRO-KEY  00027800
+022000                            INDEXED       BY WT-INX-CNDTAPR1.     00027900
+             05 WTAPR1-CNASUPRO-KEY.
+                10 WTAPR1-CNFMTAPR   PIC X(02).
+                10 WTAPR1-CNASUPRO   PIC X(35).
+022300       05 WTAPR1-CNESTADO   PIC X(02).                            00028200
+010700*----------------------------------------------------------------*00014100
+010800*              VARIABLES WORK PARA ESCRIBIR TRAZA                *00014200
+010900*----------------------------------------------------------------*00014300
+       01 WS-WORK-TRAZA.
+          05 WS-NOMBRE-COLA-TS        PIC X(08)  VALUE SPACES.
+          05 WS-LONG-TS               PIC S9(4)  COMP.
+          05 WS-CONTENIDO-TS.
+             10 WS-CONTENIDO-IND      PIC X(04)  VALUE SPACES.
+             10 WS-CONTENIDO-FILL     PIC X(01)  VALUE '-'.
+             10 WS-CONTENIDO-TOT      PIC X(532) VALUE SPACES.
+          02 WS-NOMBRE-DEL-CICS       PIC X(04)  VALUE SPACES.
+      *
+      *--------------- DEFINICION CURSOR DE LA CNDTAPR ----------------*
+      *
+           EXEC SQL
+                DECLARE APRCURS1 CURSOR FOR
+                SELECT
+                    TAPR_CNFMTAPR,
+                    TAPR_CNASUPRO,
+                    TAPR_CNESTADO
+                FROM KNDVAPRP
+                WHERE TAPR_CNCCLIPU     = :VAPR-CNCCLIPU
+                  AND TAPR_CNUSERID     = :VAPR-CNUSERID
+                  AND TAPR_CNCNLIDA     = :VAPR-CNCNLIDA
+                  AND TAPR_CNCENTID     = :VAPR-CNCENTID
+      *COL04-I
+      *           AND TAPR_CNESTADO     = 'A1'
+      *COL04-F
+           END-EXEC.
+      *COL03-I
+      *         ORDER BY TAPR_CNFMTAPR,
+      *                  TAPR_CNASUPRO
+      *    END-EXEC.
+022400*COL03-F                                                          00028300
+      *----------------------------------------------------------------*
+022400*                                                                 00028300
+029700 LINKAGE SECTION.                                                 00038300
+029800 01 DFHCOMMAREA.                                                  00038400
+030000    COPY KNWCBM01.                                                00038600
+030100*----------------------------------------------------------------*00038700
+030200*                PROCEDURE DIVISION                              *00038800
+030300*----------------------------------------------------------------*00038900
+030400 PROCEDURE DIVISION.                                              00039000
+030500*----------------------------------------------------------------*00039100
+030600*     RUTINA PRINCIPAL DE PROCESO                                *00039200
+030700*----------------------------------------------------------------*00039300
+030800 000-PRINCIPAL.                                                   00039400
+030900     PERFORM 010-INICIO                                           00039500
+031000     PERFORM 020-PROCESO                                          00039600
+031100     PERFORM 998-FINAL                                            00039700
+031200     .                                                            00039800
+031300*----------------------------------------------------------------*00039900
+031400*     RUTINA INICIO DEL PROCESO INICIALIZACION DE VARIABLES      *00040000
+031500*----------------------------------------------------------------*00040100
+031600 010-INICIO.                                                      00040200
+031700*                                                                 00040300
+031800     EXEC CICS                                                    00040400
+031900        IGNORE CONDITION ERROR                                    00040500
+032000     END-EXEC                                                     00040600
+032100*                                                                 00040700
+033000     INITIALIZE WS-VARIABLES                                      00041600
+033100                SW-SWITCHES                                       00041700
+033300                C30-CNDCC305                                      00041900
+033500                REG-CNDCE030                                      00042100
+           MOVE SPACES                        TO KNPG-S-RETORNO
+           MOVE ZEROS                         TO WS-PRODUCTOS
+           MOVE 'N'                           TO KNPG-S-IND-DATOS
+           MOVE KNPG-CAA-FECHA-OPER2          TO WS-FECHA-OPERA
+           MOVE KNPG-CAA-ENTIDAD              TO WS-COD-ENTIDAD
+           MOVE KNPG-SCANAL                   TO WS-CANAL-ENTRADA
+
+           SET NO-ESCRIBE                     TO TRUE
+
+           MOVE 'KN2CBMPG'                    TO WS-NOMBRE-COLA-TS
+
+           PERFORM 101-DEFINE-AMBIENTE
+           PERFORM 102-VALIDA-ENTRADA
+      *NJM03-INI
+      *    PERFORM 103-BUSCA-DAT-PERSONAS
+           MOVE KNPG-NUMERO-CL                TO DATOS-NUMCLIEN
+      *NJM03-FIN
+           .
+034600*----------------------------------------------------------------*00034600
+034700*  DEFINE EN QUE AMBIENTE SE EJECUTA Y SI ESCRIBE O NO LA TRAZA  *00034700
+034800*----------------------------------------------------------------*00034800
+       101-DEFINE-AMBIENTE.
+
+           EXEC CICS
+               ASSIGN  SYSID(NOMBRE-DEL-CICS)
+           END-EXEC
+
+           IF NOMBRE-DEL-CICS(1:1) NOT = 'P' AND                        00056400
+              NOMBRE-DEL-CICS(2:1) NOT = 'P' AND                        00056400
+              NOMBRE-DEL-CICS(3:1) NOT = 'P' AND                        00056400
+              NOMBRE-DEL-CICS(4:1) NOT = 'P'                            00056400
+              SET SI-ESCRIBE       TO TRUE
+           END-IF.
+037300*----------------------------------------------------------------*00045900
+037400*                     VALIDA LOS DATOS DE ENTRADA                *00046000
+037500*----------------------------------------------------------------*00046100
+       102-VALIDA-ENTRADA.
+
+           IF KNPG-NUMERO-CL EQUAL SPACES OR LOW-VALUES
+              IF KNPG-NUMERO-ID EQUAL SPACES OR LOW-VALUES
+                    MOVE '0010'                    TO KNPG-S-COD-RETORNO
+                    MOVE 'VALIDA ENTRADA'          TO KNPG-S-UBI-ERROR
+                    MOVE 'NUMERO ID NO INFORMADO ' TO KNPG-S-DET-MSG
+                    PERFORM 998-FINAL
+              ELSE
+                 IF KNPG-TIPOID EQUAL SPACES OR LOW-VALUES
+                    MOVE '0010'                    TO KNPG-S-COD-RETORNO
+                    MOVE 'VALIDA ENTRADA'          TO KNPG-S-UBI-ERROR
+                    MOVE 'TIPO ID NO INFORMADO '   TO KNPG-S-DET-MSG
+                    PERFORM 998-FINAL
+033600           END-IF                                                 00042200
+              END-IF
+           END-IF
+      *
+           IF KNPG-OPCION EQUAL SPACES OR LOW-VALUES
+              MOVE '0010'                          TO KNPG-S-COD-RETORNO
+              MOVE 'VALIDA ENTRADA'                TO KNPG-S-UBI-ERROR
+              MOVE 'OPCION  NO INFORMADA '         TO KNPG-S-DET-MSG
+              PERFORM 998-FINAL
+           END-IF
+           .
+      *NJM03-INI
+037300*----------------------------------------------------------------*00045900
+037400*          BUSCA EL DATO COMPLEMENTARIO PARA PERSONAS            *00046000
+      * SI SE INFORMA EL NUMERO DE CLIENTE ENTONCES SE BUSCA EL TIPO Y *
+      *NUMERO DE IDENTIFICACION. SI INFORMA ESTOS SE BUSCA EL NUMERO DE*
+      *CLIENTE                                                         *
+037500*----------------------------------------------------------------*00046100
+037600*103-BUSCA-DAT-PERSONAS.                                          00046200
+      *
+      *    MOVE SPACES                            TO DATOS-PECENTID
+      *                                              DATOS-OFIAPE
+      *                                              DATOS-CODISER
+      *                                              DATOS-NUMECTA
+      *                                              DATOS-CLAINTER
+      *                                              DATOS-SECINTER
+      *                                              KNWCBM00
+      *
+      *    IF KNPG-NUMERO-ID  EQUAL SPACES OR LOW-VALUES
+      *       MOVE '1'                            TO DATOS-OPCION
+      *       MOVE KNPG-NUMERO-CL                 TO DATOS-NUMCLIEN
+      *    END-IF
+      *
+      *    IF KNPG-NUMERO-CL  EQUAL SPACES OR LOW-VALUES
+      *       MOVE '2'                            TO DATOS-OPCION
+      *       MOVE KNPG-TIPOID                    TO DATOS-CODIDENT
+      *       MOVE KNPG-NUMERO-ID                 TO DATOS-CLAIDENT
+      *    END-IF
+      *
+037800*    MOVE '103-'                            TO WS-CONTENIDO-IND   00046700
+037900*    MOVE 'ANTES DE IR A PERSONAS '         TO WS-CONTENIDO-TOT   00046800
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   00047000
+038200**                                                                00047100
+      *    CALL  RUT-PE9C1000 USING DATOS-BASICOS
+      **
+037800*    MOVE '103-'                       TO WS-CONTENIDO-IND        00046700
+037900*    MOVE 'DESPUES DE IR A PERSONAS'   TO WS-CONTENIDO-TOT(1:24)  00046800
+037900*    MOVE 'DATOS-BASICOS           '   TO WS-CONTENIDO-TOT(26:24) 00046800
+      *    MOVE DATOS-BASICOS                TO WS-CONTENIDO-TOT(53:)
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   00047000
+038200**                                                                00047100
+037300*    MOVE DATOS-NUMCLIEN               TO KNPG-NUMERO-CL          00045900
+037300*    MOVE DATOS-CODIDENT               TO KNPG-TIPOID             00045900
+037300*    MOVE DATOS-CLAIDENT               TO KNPG-NUMERO-ID          00045900
+      *
+037300*    MOVE DATOS-NUMCLIEN               TO KNPG-NUMERO-CLI         00045900
+037300*    MOVE DATOS-CODIDENT               TO KNPG-TIPO-ID            00045900
+037300*    MOVE DATOS-CLAIDENT               TO KNPG-NUMERO-IDE         00045900
+NJM01 **   MOVE PE001-PRIAPE                 TO KNPG-NOMBRE(1:20)
+NJM01 **   MOVE PE001-SEGAPE                 TO KNPG-NOMBRE(21:20)
+NJM01 **   MOVE PE001-NOMBRE                 TO KNPG-NOMBRE(41:20)
+NJM01 *    MOVE PE001-PRIAPE                 TO WS-NOMBRE-COMP(1:20)
+NJM01 *    MOVE PE001-SEGAPE                 TO WS-NOMBRE-COMP(21:20)
+NJM01 *    MOVE PE001-NOMBRE                 TO WS-NOMBRE-COMP(41:20)
+NJM01 **
+NJM01 *    PERFORM 110-VALIDA-NOMBRE
+NJM01 *    MOVE WS-NOMBRE-COMP               TO KNPG-NOMBRE
+NJM01 **
+      *
+      *    IF PE001-SEXO EQUAL 'M'
+      *       MOVE 'MASCULINO'               TO KNPG-SEXO
+      *    ELSE
+      *       MOVE 'FEMENINO '               TO KNPG-SEXO
+      *    END-IF
+      *
+      *    MOVE PE094-EMAIL                  TO KNPG-EMAIL
+LAU02 *    PERFORM 104-VALIDA-CLIENTE
+038200**                                                                00047100
+      *    IF DATOS-COD-RETORNO NOT = '00'
+000   *       MOVE 'ERR0'                     TO WS-CONTENIDO-IND       00046700
+037900*       MOVE 'ERROR EN RUTINA PERSONAS' TO WS-CONTENIDO-TOT(1:24) 00046800
+037900*       MOVE 'DATOS-COD-RETORNO:  '     TO WS-CONTENIDO-TOT(26:24)00046800
+      *       MOVE '|'                        TO WS-CONTENIDO-TOT(53:)
+      *       MOVE  DATOS-COD-RETORNO         TO WS-CONTENIDO-TOT(55:)
+      *       MOVE '|'                        TO WS-CONTENIDO-TOT(58:)
+      *       MOVE  DATOS-VALOR-ERROR-UNO     TO WS-CONTENIDO-TOT(60:)
+      *       MOVE '|'                        TO WS-CONTENIDO-TOT(100:3)
+      *       MOVE  DATOS-VALOR-ERROR-DOS     TO WS-CONTENIDO-TOT(103:)
+038100*       PERFORM 31-ESCRIBE-COLA-TS                                00047000
+      **
+      *       MOVE '0050'                    TO KNPG-S-COD-RETORNO
+      *       MOVE DATOS-COD-ERROR           TO KNPG-S-UBI-ERROR(1:7)
+      *       MOVE DATOS-VALOR-ERROR-UNO(1:22) TO KNPG-S-UBI-ERROR(9:22)
+      *       MOVE DATOS-VALOR-ERROR-UNO(23:18) TO KNPG-S-DET-MSG
+      *       MOVE DATOS-VALOR-ERROR-DOS(1:11)  TO KNPG-S-DET-MSG(20:)
+      *       PERFORM 998-FINAL
+033600*    END-IF                                                       00042200
+037400*    .                                                            00046000
+      * LAU02-I
+      *----------------------------------------------------------------*
+      *                   104-VALIDA-CLIENTE                           *
+      * VALIDA LA EXISTENCIA DEL CLIENTE EN LA TABLA KNDTUSU CONTRA LOS*
+      * DATOS DE IDENTIFICACION QUE ESTAN EN PERSONAS PARA IDENTIFICAR *
+      *             SI EL CLIENTE CAMBIO DE IDENTIFICACION             *
+      *----------------------------------------------------------------*
+      *104-VALIDA-CLIENTE.
+      *
+      *    MOVE '1'                     TO  EUSU-OPCION
+      *    MOVE KNPG-NUMERO-CL          TO  EUSU-CNCCLIPU
+      *    MOVE WS-CANAL-ENTRADA        TO  EUSU-CNCNLIDA
+      *
+      *    EXEC CICS
+      *      LINK PROGRAM(RUT-KN7CBUSU)
+      *      COMMAREA(EUSU-KNDBMUSU)
+      *    END-EXEC
+      *
+      *    IF EIBRESP EQUAL DFHRESP(NORMAL)
+      *       IF EUSU-COD-RESPUESTA EQUAL TO ZEROES OR
+      *          EUSU-COD-RESPUESTA EQUAL TO SPACES
+      *          IF EUSU-SAL-CNTPDOCI     EQUAL  TO KNPG-TIPOID
+      *             AND EUSU-SAL-CNDOCIDE EQUAL  TO KNPG-NUMERO-ID
+      *             CONTINUE
+      *          ELSE
+      *             MOVE '0070'                  TO KNPG-S-COD-RETORNO
+      *             MOVE '104-VALIDA-CLIENTE'    TO KNPG-S-UBI-ERROR
+      *             MOVE 'ID DEL CLIENTE CAMBIA' TO KNPG-S-DET-MSG
+      *             PERFORM 998-FINAL
+      *          END-IF
+      *       ELSE
+      *          MOVE '0030'                   TO KNPG-S-COD-RETORNO
+      *          MOVE EUSU-COD-ERROR           TO KNPG-S-UBI-ERROR(1:7)
+      *          MOVE '104-VALIDA-CLIENTE'     TO KNPG-S-UBI-ERROR(10:)
+      *          MOVE 'ERROR RUTINA KN7CBUSU'  TO KNPG-S-DET-MSG
+      *          PERFORM 998-FINAL
+      *    ELSE
+      *       MOVE '0020'                      TO KNPG-S-COD-RETORNO
+      *       MOVE 'ERROR KN7CBUSU'            TO KNPG-S-UBI-ERROR
+      *       MOVE 'EJECUCION KN7CBUSU     '   TO KNPG-S-DET-MSG
+      *       PERFORM 995-FIN-ANORMAL       THRU 995-EXIT
+      *    END-IF.
+      *LAU02-F
+      *NJM03-FIN
+037500*----------------------------------------------------------------*00046100
+037500*                   PROCESO DE LA TRANSACCION                    *00046100
+037500*----------------------------------------------------------------*00046100
+037600 020-PROCESO.                                                     00046200
+      *COL02-I
+037800*    MOVE '020-'                            TO WS-CONTENIDO-IND   00046700
+037900*    MOVE 'INICIO PROCESO PG      '         TO WS-CONTENIDO-TOT   00046800
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   00047000
+038200*COL02-F                                                          00047100
+038800     PERFORM 050-TRAER-ASUNTOSPE                                  00047700
+038900       IF(E03-COD-RESPUESTA = '00') THEN                          00047800
+039000          PERFORM 080-CARGAR-KNDTAPR1      THRU 080-EXIT          00047900
+039100          PERFORM 090-PROCESAR-CN8CE030    THRU 090-EXIT          00048000
+039200       END-IF                                                     00048100
+039400*                                                                 00048300
+039800     PERFORM 340-GRABAR-SALIDA                                    00048700
+039801*                                                                 00048800
+039803     PERFORM 996-GRABAR-LOG                                       00049000
+039805     .                                                            00049200
+049120*----------------------------------------------------------------*00071700
+049130*     RUTINA QUE LLAMA LA RUTINA CN8CE030 QUE TRAE LOS ASUNTOS   *00071800
+049140*----------------------------------------------------------------*00071900
+049150 050-TRAER-ASUNTOSPE.                                             00072000
+049160*                                                                 00072100
+      *    MOVE 'BM3'                       TO TS-NOMBRE-E03
+      *VYG001-INI
+           MOVE DATOS-NUMCLIEN              TO TS-NOMBRE-E03
+      *    MOVE KNPG-CAA-TERMINAL           TO TS-SUFIJO-E03(1:4)
+      *    MOVE DATOS-NUMCLIEN              TO TS-SUFIJO-E03(1:4)
+      *    MOVE 'S'                         TO TS-SUFIJO-E03(5:1)
+      *VYG001-INI
+049170     MOVE DATOS-NUMCLIEN              TO E03-CLIENTE-PU           00072200
+049180     MOVE WS-E03-TS                   TO E03-COLA-TS              00072300
+049190     MOVE SPACES                      TO E03-ASUNTO-DESDE         00072400
+049200     MOVE CTE-MAXREG-E03              TO E03-NUM-ASUNTOS          00072500
+049300*COL02-I                                                          00072600
+049900*    MOVE '050-'                      TO WS-CONTENIDO-IND         00073200
+050000*    MOVE 'LLAMA CN8CE030 STAND IN'   TO WS-CONTENIDO-TOT         00073300
+NJM02 *    MOVE 'LLAMA CN8CEBM3 STAND IN'   TO WS-CONTENIDO-TOT
+050000*    MOVE 'COLA TS: '                 TO WS-CONTENIDO-TOT(26:)    00073300
+050000*    MOVE  E03-COLA-TS                TO WS-CONTENIDO-TOT(36:)    00073300
+050200*    PERFORM 31-ESCRIBE-COLA-TS                                   00073500
+      *COL02-F
+      *VYG001-INI
+           PERFORM 1001-BORRAR-COLAS-TS
+      *VYG001-FIN
+      *NJM02-INI
+049400*      EXEC CICS
+049500*         LINK PROGRAM(RUT-CN8CE030)
+049600*         COMMAREA(REG-CNDCE030)
+049700*      END-EXEC
+      *
+             EXEC CICS
+                LINK PROGRAM(RUT-CN8CEBM3)
+                COMMAREA(REG-CNDCE030)
+             END-EXEC
+      *NJM02-FIN
+049300*                                                                 00072600
+050400     IF (EIBRESP EQUAL DFHRESP(NORMAL)) THEN                      00073700
+050500        IF (E03-COD-RESPUESTA = CTE-RETORNO-OK) THEN              00073800
+050600           CONTINUE                                               00073900
+050700        ELSE                                                      00074000
+      *COL02-I
+050800*          MOVE '050-'                   TO WS-CONTENIDO-IND      00074100
+050900*          MOVE '050-TRAER-ASUNTOSPE   ' TO WS-CONTENIDO-TOT(1:22)00074200
+NJM02 **         MOVE 'RETORNA MAL CN8CE030  ' TO WS-CONTENIDO-TOT(23:) 00074300
+NJM02 *          MOVE 'RETORNA MAL CN8CEBM3  ' TO WS-CONTENIDO-TOT(23:) 00074300
+051200*          PERFORM 31-ESCRIBE-COLA-TS                             00074500
+050800*          MOVE '050-'                   TO WS-CONTENIDO-IND      00074100
+NJM02 **         MOVE 'RETORNA MAL CN8CE030  ' TO WS-CONTENIDO-TOT(1:22)00074600
+NJM02 *          MOVE 'RETORNA MAL CN8CEBM3  ' TO WS-CONTENIDO-TOT(1:22)00074600
+051400*          MOVE E03-COD-ERROR            TO WS-CONTENIDO-TOT(23:) 00074700
+051500*          PERFORM 31-ESCRIBE-COLA-TS                             00074800
+050800*          MOVE '050-'                   TO WS-CONTENIDO-IND      00074100
+051600*          MOVE 'RETORNA ERROR UNO   '   TO WS-CONTENIDO-TOT(1:22)00074900
+051700*          MOVE E03-VALOR-ERROR-UNO      TO WS-CONTENIDO-TOT(23:) 00075000
+051800*          PERFORM 31-ESCRIBE-COLA-TS                             00075100
+050800*          MOVE '050-'                   TO WS-CONTENIDO-IND      00074100
+051900*          MOVE 'RETORNA ERROR DOS   '   TO WS-CONTENIDO-TOT(1:22)00075200
+052000*          MOVE E03-VALOR-ERROR-DOS      TO WS-CONTENIDO-TOT(23:) 00075300
+052100*          PERFORM 31-ESCRIBE-COLA-TS                             00075400
+052200*COL02-F                                                          00075500
+053100           MOVE '0030'                   TO KNPG-S-COD-RETORNO    00076400
+053100           MOVE E03-COD-ERROR            TO KNPG-S-UBI-ERROR(1:7) 00076400
+053100           MOVE E03-VALOR-ERROR-UNO      TO KNPG-S-UBI-ERROR(10:) 00076400
+053100           MOVE E03-VALOR-ERROR-DOS      TO KNPG-S-DET-MSG        00076400
+053100           PERFORM 998-FINAL                                      00076400
+052300        END-IF                                                    00075600
+052400     ELSE                                                         00075700
+      *COL02-I
+052500*       MOVE '050-'                      TO WS-CONTENIDO-IND      00075800
+052600*       MOVE '050-TRAER-ASUNTOSPE      ' TO WS-CONTENIDO-TOT(1:22)00075900
+052700*       MOVE 'RETORNA ERROR CICS E030'   TO WS-CONTENIDO-TOT(23:) 00076000
+052900*       PERFORM 31-ESCRIBE-COLA-TS                                00076200
+053000*COL02-F                                                          00076300
+053100        MOVE '0020'                      TO KNPG-S-COD-RETORNO    00076400
+053100        MOVE 'ERROR PERSONAS'            TO KNPG-S-UBI-ERROR      00076400
+053100        MOVE 'EJECUCION CN8CE03X     '   TO KNPG-S-DET-MSG        00076400
+053100        PERFORM 998-FINAL                                         00076400
+053100*                                                                 00076400
+053200        PERFORM 990-MOVER-ERRORES-CICS THRU 990-EXIT              00076500
+053300        PERFORM 995-FIN-ANORMAL        THRU 995-EXIT              00076600
+053400     END-IF.                                                      00076700
+067401*                                                                 00098900
+068531*---------------------------------------------------------------* 00105700
+068532*    RUTINA QUE CARGA LA TABLA CNDTAPR1 EN MEMORIA              * 00105800
+068533*---------------------------------------------------------------* 00105900
+068534 080-CARGAR-KNDTAPR1.                                             00106000
+068535*                                                                 00106100
+068536     PERFORM 082-ABRIR-CUR-KNDTAPR1    THRU 082-EXIT              00106200
+068537     PERFORM 084-LEER-CUR-KNDTAPR1     THRU 084-EXIT              00106300
+068538     PERFORM                                                      00106400
+068539           UNTIL (SW-FIN-CUR-APR1 = 1)                            00106500
+068540         ADD   1              TO WT-MAX-CNDTAPR1                  00106600
+068550         MOVE  VAPR-CNFMTAPR  TO WTAPR1-CNFMTAPR(WT-MAX-CNDTAPR1) 00106700
+068560         MOVE  VAPR-CNASUPRO  TO WTAPR1-CNASUPRO(WT-MAX-CNDTAPR1) 00106800
+068561         MOVE  VAPR-CNESTADO  TO WTAPR1-CNESTADO(WT-MAX-CNDTAPR1) 00106900
+068562         PERFORM 084-LEER-CUR-KNDTAPR1 THRU 084-EXIT              00107000
+068563     END-PERFORM                                                  00107100
+068564     PERFORM 086-CERRAR-CUR-KNDTAPR1    THRU 086-EXIT.            00107200
+068565 080-EXIT.  EXIT.                                                 00107300
+068566*---------------------------------------------------------------* 00107400
+068567*    RUTINA PARA ABRIR EL CURSOR DE LA TABLA CNDTAPR1           * 00107500
+068568*---------------------------------------------------------------* 00107600
+068569 082-ABRIR-CUR-KNDTAPR1.                                          00107700
+068570     INITIALIZE                    DCLKNDVAPRP                    00107800
+068580     MOVE DATOS-NUMCLIEN       TO  VAPR-CNCCLIPU                  00107900
+LAU01 *    MOVE KNPG-NUMERO-ID       TO  VAPR-CNUSERID                  00108000
+LAU01      MOVE '00000000'           TO  VAPR-CNUSERID
+068600     MOVE WS-CANAL-ENTRADA     TO  VAPR-CNCNLIDA                  00108100
+068601     MOVE WS-COD-ENTIDAD       TO  VAPR-CNCENTID                  00108200
+068602*                                                                 00108300
+068603     EXEC SQL                                                     00108400
+068604        OPEN APRCURS1                                             00108500
+068605     END-EXEC                                                     00108600
+068606*                                                                 00108700
+068607     EVALUATE SQLCODE                                             00108800
+068608        WHEN ZEROS                                                00108900
+068609             CONTINUE                                             00109000
+068610        WHEN OTHER                                                00109100
+      *COL02-I
+068611*            MOVE '082-'                    TO WS-CONTENIDO-IND   00109200
+068612*            MOVE 'ERROR ABRIENDO CURSOR '  TO WS-CONTENIDO-TOT   00109300
+068613*            MOVE SQLCODE                 TO WS-CONTENIDO-TOT(23:)00109400
+068614*            PERFORM 31-ESCRIBE-COLA-TS                           00109500
+      *COL02-F
+068615             MOVE '0099'                   TO KNPG-S-COD-RETORNO  00109600
+068616             MOVE '082-ABRIR-CUR-CNDTAPR1' TO KNPG-S-UBI-ERROR    00109700
+068617             MOVE 'ABRIR CURSOR CNDTAPR1'  TO KNPG-S-DET-MSG      00109800
+068618             MOVE SQLCODE                  TO KNPG-S-DET-MSG(23:) 00109900
+068619             PERFORM 995-FIN-ANORMAL        THRU 995-EXIT         00110000
+068620     END-EVALUATE.                                                00110100
+068621 082-EXIT.  EXIT.                                                 00110200
+068622*---------------------------------------------------------------* 00110300
+068623*    RUTINA PARA LEER EL CURSOR DE LA TABLA CNDTAPR1            * 00110400
+068624*---------------------------------------------------------------* 00110500
+068625 084-LEER-CUR-KNDTAPR1.                                           00110600
+068626*                                                                 00110700
+068627     EXEC SQL                                                     00110800
+068628         FETCH APRCURS1                                           00110900
+068629         INTO                                                     00111000
+068630           :VAPR-CNFMTAPR,                                        00111100
+068640           :VAPR-CNASUPRO,                                        00111200
+068641           :VAPR-CNESTADO                                         00111300
+068642     END-EXEC                                                     00111400
+068643*                                                                 00111500
+068644     EVALUATE SQLCODE                                             00111600
+068645         WHEN ZEROS                                               00111700
+068646              IF(WT-MAX-CNDTAPR1 >= CTE-MIL)                      00111800
+068647                 MOVE 1 TO SW-FIN-CUR-APR1                        00111900
+068648              END-IF                                              00112000
+068649         WHEN +100                                                00112100
+068650              MOVE 1 TO SW-FIN-CUR-APR1                           00112200
+068651         WHEN OTHER                                               00112300
+      *COL02-I
+068652*            MOVE '084-'                  TO WS-CONTENIDO-IND     00112400
+068652*            MOVE '084-LEER-CUR-KNDTAPR1' TO WS-CONTENIDO-TOT(1:) 00112400
+068653*            MOVE 'ERROR LEYENDO CURSOR ' TO WS-CONTENIDO-TOT(25:)00112500
+068654*            MOVE SQLCODE                 TO WS-CONTENIDO-TOT(50:)00112600
+068655*            PERFORM 31-ESCRIBE-COLA-TS                           00112700
+      *COL02-F
+                   MOVE '0099'                   TO KNPG-S-COD-RETORNO
+                   MOVE '084-LEER-CUR-KNDTAPR1'  TO KNPG-S-UBI-ERROR
+                   MOVE 'ABRIR CURSOR CNDTAPR1'  TO KNPG-S-DET-MSG
+                   MOVE SQLCODE                  TO KNPG-S-DET-MSG(23:)
+068660             PERFORM 995-FIN-ANORMAL        THRU 995-EXIT         00113200
+068661     END-EVALUATE.                                                00113300
+068662 084-EXIT.  EXIT.                                                 00113400
+068663*---------------------------------------------------------------* 00113500
+068664*    RUTINA PARA CERRAR EL CURSOR DE LA CNDTAPR1                * 00113600
+068665*---------------------------------------------------------------* 00113700
+068666 086-CERRAR-CUR-KNDTAPR1.                                         00113800
+068667*                                                                 00113900
+068668     EXEC SQL                                                     00114000
+068669       CLOSE APRCURS1                                             00114100
+068670     END-EXEC                                                     00114200
+068671*                                                                 00114300
+068672     EVALUATE SQLCODE                                             00114400
+068673       WHEN ZEROS                                                 00114500
+068674            CONTINUE                                              00114600
+068675       WHEN OTHER                                                 00114700
+      *COL02-I
+068676*           MOVE '086-'                   TO WS-CONTENIDO-IND     00114800
+068676*           MOVE '086-CLOSE-CUR-CNDTAPR1' TO WS-CONTENIDO-TOT(1:) 00114800
+068677*           MOVE 'ERROR CERRANDO CURSOR ' TO WS-CONTENIDO-TOT(25:)00114900
+068678*           MOVE SQLCODE                  TO WS-CONTENIDO-TOT(50:)00115000
+068679*           PERFORM 31-ESCRIBE-COLA-TS                            00115100
+      *COL02-F
+068680            MOVE '0099'                   TO KNPG-S-COD-RETORNO   00115200
+068681            MOVE '082-ABRIR-CUR-CNDTAPR1' TO KNPG-S-UBI-ERROR     00115300
+068682            MOVE 'ABRIR CURSOR CNDTAPR1'  TO KNPG-S-DET-MSG       00115400
+068683            MOVE SQLCODE                  TO KNPG-S-DET-MSG(23:)  00115500
+068684            PERFORM 995-FIN-ANORMAL        THRU 995-EXIT          00115600
+068685     END-EVALUATE.                                                00115700
+068686 086-EXIT.  EXIT.                                                 00115800
+068687*                                                                 00115900
+068688*---------------------------------------------------------------* 00116000
+068689*    PROCESA RETORNO RUTINA CN8CE030                            * 00116100
+068690*    CRUZANDOLA CONTRA TABLA EN MEMORIA DE CNDTCAPR1            * 00116200
+068691*---------------------------------------------------------------* 00116300
+068698*        BUSQUEDA EN  TABLA EN MEMORIA CNDTAPR1                   00117000
+068900*        SI NO ESTA EN TABLA EN MEMORIA CNDTAPR1 E                00117400
+069000*        INDICADOR DE FECHA DE CANCELACION ES N  LO INSERTA       00117500
+069005*        SI ESTA EN TABLA EN MEMORIA CNDTAPR1 CONTINUA,           00118000
+069006*        NO SE VALIDA ESTADO DE CANCELACION,                      00118100
+069007*        LA BAJA DE LOS ASUNTOS SE HACE EN LA KN2CBMP1            00118200
+068691*---------------------------------------------------------------* 00116300
+068692 090-PROCESAR-CN8CE030.                                           00116400
+068693*                                                                 00116500
+068694     MOVE  1                        TO WS-ITEM-E03                00116600
+068695     PERFORM 092-LEER-COLA          THRU 092-EXIT                 00116700
+
+068696     PERFORM  UNTIL (SW-FIN-ASUNTOS-E03  = 1)                     00116800
+068697                                                                  00116900
+      *
+              PERFORM 0901-SUMAR-TIPO
+      *
+              MOVE E03-TIPO                    TO W-E03-TIPO-K          00117100
+              MOVE E03-ASUNTO                  TO W-E03-ASUNTO-K        00117200
+      *                                                                 00127430
+              MOVE  SPACES                TO W-ESTADO-ASUNTO-APR        00127440
+              SET SW-ENCONTRADO-APR-NO    TO TRUE                       00127441
+068699        SET  WT-INX-CNDTAPR1           TO   1                     00117100
+068700        SEARCH ALL WT-TABLA-CNDTAPR1                              00117200
+068800           AT END                                                 00117300
+069001              IF(E03-IND-FECHA-CANCEL = 'N') THEN                 00117600
+069002                 PERFORM 095-NUEVO-KNDTAPR1 THRU 095-EXIT         00117700
+069003               END-IF                                             00117800
+                 WHEN WTAPR1-CNASUPRO-KEY(WT-INX-CNDTAPR1) =
+                      W-E03-ASUNTO-KEY
+                      MOVE WTAPR1-CNESTADO(WT-INX-CNDTAPR1)  TO
+                                        W-ESTADO-ASUNTO-APR
+                      MOVE 'S'            TO SW-ENCONTRADO-ASUNTO-APR
+              END-SEARCH
+      *
+              IF(SW-ENCONTRADO-APR-SI) THEN
+                    IF(E03-IND-FECHA-CANCEL = 'N' AND
+                       W-ESTADO-ASUNTO-APR(1:1)= 'X') THEN
+                          PERFORM FNEG-2300-UPDATE-APR
+                    END-IF
+              END-IF
+069010*                                                                 00118500
+069011        PERFORM 092-LEER-COLA        THRU 092-EXIT                00118600
+069012     END-PERFORM.                                                 00118700
+069013 090-EXIT.  EXIT.                                                 00118800
+069014*----------------------------------------------------------------*00118900
+069015*     RUTINA PARA LEER LA COLA DONDE ESTAN TODOS LOS ASUNTOS     *00119000
+069016*----------------------------------------------------------------*00119100
+069017 092-LEER-COLA.                                                   00119200
+069018     MOVE LENGTH OF E03-CNDCE031     TO WS-TSLENGTH               00119300
+069019*                                                                 00119400
+069020     EXEC CICS                                                    00119500
+069030        READQ TS QUEUE(WS-E03-TS)                                 00119600
+069040        INTO(E03-CNDCE031)                                        00119700
+069050        ITEM(WS-ITEM-E03)                                         00119800
+069060        LENGTH (WS-TSLENGTH)                                      00119900
+069070     END-EXEC                                                     00120000
+069080*                                                                 00120100
+069090     IF (EIBRESP EQUAL +00) THEN                                  00120200
+069100        IF (WS-ITEM-E03 > E03-ELEMENTOS) THEN                     00120300
+069200           MOVE 1           TO SW-FIN-ASUNTOS-E03                 00120400
+069300        END-IF                                                    00120500
+069400        ADD  1              TO WS-ITEM-E03                        00120600
+069500     ELSE                                                         00120700
+069600       IF (EIBRESP EQUAL +44 OR DFHRESP(ITEMERR))                 00120800
+069700          INITIALIZE E03-CNDCE031                                 00120900
+069800          MOVE 1           TO SW-FIN-ASUNTOS-E03                  00121000
+069900       ELSE                                                       00121100
+      *COL02-I
+070000*         MOVE '092-'                  TO WS-CONTENIDO-IND        00121200
+070100*         MOVE 'ERROR LEYENDO COLA  '  TO WS-CONTENIDO-TOT(1:20)  00121300
+070200*         MOVE EIBRESP                 TO WS-CONTENIDO-TOT(23:)   00121400
+070300*         PERFORM 31-ESCRIBE-COLA-TS                              00121500
+070400*COL02-F                                                          00121600
+070500          MOVE  '0040'                 TO KNPG-S-COD-RETORNO      00121700
+070600          MOVE  '092-LEER-COLA '       TO KNPG-S-UBI-ERROR        00121800
+070600          MOVE  'COLA: '               TO KNPG-S-DET-MSG(1:6)     00121800
+070600          MOVE   WS-E03-TS             TO KNPG-S-DET-MSG(7:8)     00121800
+070600          MOVE  'ERROR: '              TO KNPG-S-DET-MSG(16:7)    00121800
+070600          MOVE   EIBRESP               TO KNPG-S-DET-MSG(22:)     00121800
+070700          PERFORM 990-MOVER-ERRORES-CICS THRU 990-EXIT            00121900
+070800          PERFORM 995-FIN-ANORMAL        THRU 995-EXIT            00122000
+070900       END-IF                                                     00122100
+071000     END-IF.                                                      00122200
+071001 092-EXIT. EXIT.                                                  00122300
+071002*----------------------------------------------------------------*00122400
+071003*     RUTINA PARA DAR DE ALTA NUEVO ASUNTO EN LA TABLA CNDTAPR   *00122500
+071004*----------------------------------------------------------------*00122600
+071005 095-NUEVO-KNDTAPR1.                                              00122700
+071006     INITIALIZE R08-CNDCR805                                      00122800
+071007     MOVE WS-CANAL-ENTRADA                 TO R08-ACC-CANAL       00122900
+071008     MOVE WS-CANAL-ENTRADA                 TO R08-COD-CANAL       00123000
+071009     MOVE WS-COD-ENTIDAD                   TO R08-COD-ENTIDAD     00123100
+071010     MOVE KNPG-NUMERO-CL                   TO R08-CLIENTE-PU      00123200
+LAU01 *    MOVE KNPG-NUMERO-ID                   TO R08-COD-USERID      00123300
+LAU01      MOVE '00000000'                       TO R08-COD-USERID
+071030     MOVE SPACES                           TO R08-CNYEATIT        00123400
+071040     MOVE 'N'                              TO R08-CNYVAEXE        00123500
+071050     MOVE SPACES                           TO R08-CNDIVISA        00123600
+071060     MOVE ZEROS                            TO R08-CNNDIAPE        00123700
+071070     MOVE ZEROS                            TO R08-CNIMPORI        00123800
+071080     MOVE ZEROS                            TO R08-CNIMPPEN        00123900
+071090     MOVE E03-TIPO                         TO R08-FMT             00124000
+071100     MOVE E03-ASUNTO                       TO R08-IASUNTO         00124100
+      *NOVA01-I
+           IF R08-FMT = WS-DE
+              PERFORM 0951-VALIDAR-NUMERO-CEL
+              MOVE BDPE-CEL-SAL                  TO R08-IASUNTO(21:10)
+           END-IF
+      *NOVA01-F
+071200     MOVE 'A1'                             TO R08-ESTADO          00124200
+071300     MOVE WS-FECHA-OPERA                   TO R08-FHPROCES        00124300
+071400*-------- Cargar Fecha Mensual de RenovaciÛn --------------------*00124400
+071500     INITIALIZE                         R80-CNDCR800              00124500
+071600     MOVE '00'                       TO R80-CDOPCIO               00124600
+071700     MOVE WS-FECHA-OPERA             TO R80-FHTRAT0               00124700
+071800     MOVE 1                          TO R80-FACTOR-MES            00124800
+071900     PERFORM 250-CALCULO-FECHAS                                   00124900
+072000*----------------------------------------------------------------*00125000
+072100     MOVE R80-FECHA-MENSUAL          TO R08-CNFHRENO              00125100
+072200     MOVE KNPG-NUMERO-CL             TO R08-USERID-ALTA           00125200
+072300     MOVE KNPG-NUMERO-CL             TO R08-USERID-ULTMOD         00125300
+072400     MOVE 'KN2CBMPG'                 TO R08-TERM-ULTMOD           00125400
+      *COL02-I
+072500*    PERFORM 097-ALTA-ASUNTO         THRU 097-EXIT.               00125500
+           MOVE E03-ASUNTO(1:4)            TO WS-VALIDA-CREHIPO(1:4)
+           MOVE E03-ASUNTO(11:2)           TO WS-VALIDA-CREHIPO(5:2)
+      *
+           IF E03-TIPO          = 'HI'   AND
+              WS-VALIDA-CREHIPO = '001396'
+              PERFORM 097-ALTA-ASUNTO
+           ELSE
+             IF E03-TIPO  NOT EQUAL 'HI'
+                PERFORM 097-ALTA-ASUNTO
+             ELSE
+                CONTINUE
+             END-IF
+           END-IF .
+      *COL02-F
+072600 095-EXIT. EXIT.                                                  00125600
+072700*----------------------------------------------------------------*00125700
+072800*     RUTINA PARA DAR DE ALTA AL ASUNTO EN LA CNDTAPR            *00125800
+072900*----------------------------------------------------------------*00125900
+073000 097-ALTA-ASUNTO.                                                 00126000
+073100*                                                                 00126100
+073200*    CALL RUT-KN7CBM60   USING R08-CNDCR805 ERR-CNDCERR0          00126200
+073300*    COPY KNWCBM60                                                00126300
+073300                                                                  00126300
+049400       EXEC CICS                                                  00072700
+049500          LINK PROGRAM(RUT-KN7CBM60)                              00072800
+049600          COMMAREA(R08-CNDCR805)                                  00072900
+049700       END-EXEC                                                   00073000
+073300                                                                  00126300
+073400     IF (R08-COD-RESPUESTA  = CTE-RETORNO-OK) THEN                00126400
+073500        CONTINUE                                                  00126500
+073600     ELSE                                                         00126600
+073700*----------- Registro Ya Existia --------------------------------*00126700
+073800       IF (R08-COD-ERROR = CTE-CNE0701) THEN                      00126800
+073900          CONTINUE                                                00126900
+074000       ELSE                                                       00127000
+      *COL02-I
+074100*        MOVE '097-'                     TO WS-CONTENIDO-IND      00127100
+074100*        MOVE '097-ALTA-ASUNTO         ' TO WS-CONTENIDO-TOT(1:24)00127100
+074200*        MOVE 'RETORNA ERROR CN8CR085  ' TO WS-CONTENIDO-TOT(25:) 00127200
+074300*        MOVE R08-COD-RESPUESTA          TO WS-CONTENIDO-TOT(55:) 00127300
+074500*        MOVE ' | RETORNA CODIGO ERROR ' TO WS-CONTENIDO-TOT(70:) 00127500
+074600*        MOVE R08-COD-ERROR              TO WS-CONTENIDO-TOT(95:) 00127600
+074800*        MOVE ' | RETORNA ERROR UNO    ' TO WS-CONTENIDO-TOT(110:)00127800
+074900*        MOVE R08-VALOR-ERROR-UNO        TO WS-CONTENIDO-TOT(140:)00127900
+075100*        MOVE ' | RETORNA ERROR DOS    ' TO WS-CONTENIDO-TOT(165:)00128100
+075200*        MOVE R08-VALOR-ERROR-DOS        TO WS-CONTENIDO-TOT(190:)00128200
+074400*        PERFORM 31-ESCRIBE-COLA-TS                               00127400
+075400*COL02-F                                                          00128400
+075500         MOVE '0099'                   TO KNPG-S-COD-RETORNO      00128500
+075700         MOVE R08-COD-ERROR            TO KNPG-S-UBI-ERROR(1:7)   00128700
+075800         MOVE R08-VALOR-ERROR-UNO      TO KNPG-S-UBI-ERROR(9:20)  00128800
+075900         MOVE R08-VALOR-ERROR-DOS      TO KNPG-S-DET-MSG          00128900
+075600         MOVE '097-ALTA-ASUNTO'        TO KNPG-S-DET-MSG(22:)     00128600
+076300         PERFORM 995-FIN-ANORMAL       THRU 995-EXIT              00129300
+076400       END-IF                                                     00129400
+076500     END-IF.                                                      00129500
+076600 097-EXIT.  EXIT.                                                 00129600
+077284*                                                                 00151200
+106207*----------------------------------------------------------------*00194100
+106208*     RUTINA PARA MOVER LOS DATOS DE LA TABLA DE ASUNTOS AL      *00194200
+106209*     FORMATO DE SALIDA                                          *00194300
+106210*----------------------------------------------------------------*00194400
+106220 340-GRABAR-SALIDA.                                               00194500
+
+           IF WS-TOTAL-PROD > ZERO
+              MOVE 'S'                        TO KNPG-S-IND-DATOS
+           END-IF
+      *COL02-I
+      *    MOVE '340-'                    TO WS-CONTENIDO-IND           00222628
+      *    MOVE 'KNPG-S-IND-DATOS    '    TO WS-CONTENIDO-TOT(1:20)     00222628
+      *    MOVE  KNPG-S-IND-DATOS         TO WS-CONTENIDO-TOT(23:)      00222629
+      *    MOVE 'KNPG-S-RETORNO      '    TO WS-CONTENIDO-TOT(26:)      00222628
+      *    MOVE  KNPG-S-RETORNO           TO WS-CONTENIDO-TOT(50:)      00222629
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   00222630
+      *COL02-F
+109300     .                                                            00199600
+116148*----------------------------------------------------------------*00211200
+116149*     RUTINA PARA MOVER LOS ERRORES DE CICS                      *00211300
+116150*----------------------------------------------------------------*00211400
+116160 990-MOVER-ERRORES-CICS.                                          00211500
+116170                                                                  00211600
+116200     INITIALIZE QGECABC                                           00211900
+116300     MOVE 'S'                           TO ABC-ABEND              00212000
+           MOVE 'KN2CBMPG'                    TO ABC-PROGRAMA
+           MOVE EIBFN                         TO ABC-EIBFN
+           MOVE EIBRSRCE                      TO ABC-EIBRSRCE
+           MOVE EIBRCODE                      TO ABC-EIBRCODE
+           MOVE EIBRESP                       TO ABC-EIBRESP1
+           MOVE EIBRESP2                      TO ABC-EIBRESP2
+
+           EXEC CICS
+                LINK PROGRAM ('QG1CABC')
+                COMMAREA (QGECABC)
+           END-EXEC.
+
+116400 990-EXIT.  EXIT.                                                 00212100
+116500*----------------------------------------------------------------*00212200
+116600*      RUTINA DE FIN ANORMAL                                     *00212300
+116700*----------------------------------------------------------------*00212400
+116800 995-FIN-ANORMAL.                                                 00212500
+116900     MOVE CTE-NO                     TO C30-IND-ACEPTADA          00212600
+117000     PERFORM 996-GRABAR-LOG                                       00212700
+117100     PERFORM 998-FINAL             THRU 998-EXIT.                 00212800
+117200 995-EXIT.  EXIT.                                                 00212900
+117300*----------------------------------------------------------------*00213000
+117400*      RUTINA QUE GRABA EL LOG                                   *00213100
+117500*----------------------------------------------------------------*00213200
+117600 996-GRABAR-LOG.                                                  00213300
+            INITIALIZE B095-KNDCB095
+            MOVE KNPG-NUMERO-CL            TO B095-CLIENTE-PU
+            MOVE KNPG-CANAL                TO B095-ACC-CANAL
+            MOVE KNPG-NUMERO-CL            TO B095-CNUSERID
+      *     MOVE KNPG-CANAL                TO B095-COD-CANAL
+            MOVE WS-CANAL-ENTRADA          TO B095-COD-CANAL
+            MOVE KNPG-CAA-ENTIDAD          TO B095-COD-ENTIDAD
+            MOVE KNPG-CAA-CODTRAN          TO B095-FUNCION
+            MOVE ZEROES                    TO B095-IMP-OPERAC
+            MOVE KNPG-S-COD-RETORNO        TO B095-ERROR-APLIC
+            MOVE KNPG-CAA-FECHA-OPER2      TO B095-FECHA-TRANS
+            MOVE KNPG-CAA-HORA-TRANS       TO WS-HORA-OPERA
+            MOVE WS-HORA-OPERA             TO WS-HORA-OPERA2
+            MOVE WS-HORA-OPERA2            TO B095-HORA-TRANS
+            MOVE KNPG-CANAL                TO B095-CANAL-LLAMANTE
+            MOVE 'N'                       TO B095-IND-REVERSO
+            MOVE SPACES                    TO B095-REF-INTERNA
+
+           EXEC CICS                                                    00106100
+              LINK PROGRAM(RUT-KN7CB095)                                00106200
+              COMMAREA(B095-KNDCB095)                                   00106300
+           END-EXEC                                                     00106400
+122400     .                                                            00218100
+124700*----------------------------------------------------------------*00219500
+124800*      RUTINA FINAL DEL PROGRAMA                                 *00219600
+124900*----------------------------------------------------------------*00219700
+125000 998-FINAL.                                                       00219800
+
+      *COL01-I
+           PERFORM 1001-BORRAR-COLAS-TS
+      *COL01-F
+           IF KNPG-S-COD-RETORNO NOT EQUAL SPACES AND
+              KNPG-S-COD-RETORNO NOT EQUAL '0000'
+      *COL02-I
+              CONTINUE
+      *       MOVE '0998'                    TO WS-CONTENIDO-IND
+      *       MOVE 'KNPG-S-COD-RETORNO'      TO WS-CONTENIDO-TOT(1:20)
+      *       MOVE  KNPG-S-COD-RETORNO       TO WS-CONTENIDO-TOT(23:)
+      *       PERFORM 31-ESCRIBE-COLA-TS
+      *COL02-F
+           END-IF
+
+125100     EXEC CICS                                                    00219900
+125200        RETURN                                                    00220000
+125300     END-EXEC.                                                    00220100
+125400 998-EXIT.  EXIT.                                                 00220200
+      *----------------------------------------------------------------*00222602
+      *    ACTUALIZA EL ESTADO DE LOS CONTRATOS EN LA APR              *00222603
+      *----------------------------------------------------------------*00222604
+       FNEG-2300-UPDATE-APR.                                            00222605
+      *                                                                 00222610
+           INITIALIZE REG-KNWCAPR0                                      00222611
+           MOVE 'E'                      TO WAPR-E-OPCION               00222612
+           MOVE KNPG-NUMERO-CL           TO WAPR-E-CNCCLIPU             00222613
+                                            WAPR-E-CNUSERID             00222614
+                                            WAPR-CNCCLIPU
+                                            WAPR-CNUSERID
+           MOVE E03-TIPO                 TO WAPR-E-CNFMTAPR             00222615
+           MOVE E03-ASUNTO               TO WAPR-E-CNASUPRO             00222616
+           MOVE WS-CANAL-ENTRADA         TO WAPR-E-CNCNLIDA             00222617
+           MOVE '0013'                   TO WAPR-E-CNCENTID             00222618
+      *ACTUALIZAMOS SOLO EL CAMPO DE ESTADO.                            00222619
+           MOVE 'A1'                     TO WAPR-CNESTADO               00222620
+      *                                                                 00222621
+           EXEC CICS                                                    00222622
+             LINK PROGRAM(RUT-KN7CBM50)                                 00222623
+             COMMAREA(REG-KNWCAPR0)                                     00222624
+           END-EXEC                                                     00222625
+      *                                                                 00222626
+           IF (WAPR-RETORNO NOT = CTE-RETORNO-OK) THEN                  00222627
+      *COL02-I
+      *        MOVE 'FNEG'                    TO WS-CONTENIDO-IND       00222628
+      *        MOVE 'RETORNA ERROR UPDATE'    TO WS-CONTENIDO-TOT(1:20) 00222628
+      *        MOVE WAPR-RETORNO              TO WS-CONTENIDO-TOT(23:)  00222629
+      *        PERFORM 31-ESCRIBE-COLA-TS                               00222630
+      *COL02-F                                                          00222631
+               MOVE '0062'                     TO KNPG-S-COD-RETORNO    00222632
+               MOVE 'FNEG-2300-UPDATE-APR  '   TO KNPG-S-UBI-ERROR      00222633
+               MOVE 'ERROR RUTINA UPDATE APR'  TO KNPG-S-DET-MSG        00222634
+               MOVE SQLCODE                    TO KNPG-S-DET-MSG(26:)
+               PERFORM 995-FIN-ANORMAL        THRU 995-EXIT
+           END-IF.                                                      00222635
+      /                                                                 00222636
+      *----------------------------------------------------------------*
+      *                       31-ESCRIBE-COLA-TS                       *
+      *       ESCRIBE COLA TS DE LOG PARA VALIDAR FUNCIONAMIENTO       *
+      *----------------------------------------------------------------*
+       31-ESCRIBE-COLA-TS.
+      *COL02-I
+            CONTINUE .
+      *
+      *     IF SI-ESCRIBE
+      *        MOVE LENGTH OF WS-CONTENIDO-TS    TO WS-LONG-TS          16829400
+      *                                                                 16830000
+      *        EXEC CICS WRITEQ TS                                      16840000
+      *           QUEUE  (WS-NOMBRE-COLA-TS)                            16850000
+      *           FROM   (WS-CONTENIDO-TS)                              16860000
+      *           LENGTH (WS-LONG-TS)                                   16870000
+      *           NOHANDLE                                              16880000
+      *        END-EXEC                                                 16890000
+      *                                                                 16900000
+      *        MOVE SPACES                       TO WS-CONTENIDO-TS     16910000
+      *        MOVE '-'                          TO WS-CONTENIDO-FILL
+      *     END-IF.
+      *COL02-F
+088006*----------------------------------------------------------------*00172200
+088007*     RUTINA PARA EL CALCULO DE FECHAS DE RENOVACION             *00172300
+088008*----------------------------------------------------------------*00172400
+088009 250-CALCULO-FECHAS.                                              00172500
+088010*                                                                 00172600
+088020     CALL RUT-CN8CR800  USING R80-CNDCR800 ERR-CNDCERR0           00172700
+088030*                                                                 00172800
+088040     IF (R80-COD-RESPUESTA = CTE-RETORNO-OK) THEN                 00172900
+088050        CONTINUE                                                  00173000
+088060     ELSE                                                         00173100
+      *COL02-I
+      *       MOVE '250-'                  TO WS-CONTENIDO-IND
+088070*       MOVE '250-CALCULO-FECHAS '   TO WS-CONTENIDO-TOT(1:19)    00173200
+088080*       MOVE 'RETORNA ERROR CN8CR800  ' TO WS-CONTENIDO-TOT(21:24)00173300
+088090*       MOVE  R80-COD-RESPUESTA      TO WS-CONTENIDO-TOT(46:)     00173400
+088080*       MOVE 'CODIGO DE ERROR '      TO WS-CONTENIDO-TOT(57:)     00173300
+088090*       MOVE  R80-COD-ERROR          TO WS-CONTENIDO-TOT(77:)     00173400
+088500*       MOVE 'RETORNA ERROR UNO  '   TO WS-CONTENIDO-TOT(90:)     00173900
+088600*       MOVE  R80-VALOR-ERROR-UNO    TO WS-CONTENIDO-TOT(115:)    00174000
+088800*       MOVE 'RETORNA ERROR DOS '    TO WS-CONTENIDO-TOT(140:)    00174200
+088900*       MOVE  R80-VALOR-ERROR-DOS    TO WS-CONTENIDO-TOT(163:)    00174300
+088100*       PERFORM 31-ESCRIBE-COLA-TS                                00173500
+089100*COL02-F                                                          00174500
+090000        PERFORM 995-FIN-ANORMAL       THRU 995-EXIT               00175400
+090100     END-IF.                                                      00175500
+088006*----------------------------------------------------------------*00172200
+088007*     RUTINA PARA EL CALCULO DE FECHAS DE RENOVACION             *00172300
+088008*----------------------------------------------------------------*00172400
+       0901-SUMAR-TIPO.
+      *
+            ADD 1                        TO WS-TOTAL-PROD .
+      *COL02-I
+      *     MOVE '0901'                  TO WS-CONTENIDO-IND
+      *     MOVE 'TIPO - ASUNTO     '    TO WS-CONTENIDO-TOT
+      *     MOVE  E03-TIPO               TO WS-CONTENIDO-TOT(21:)
+      *     MOVE  E03-ASUNTO             TO WS-CONTENIDO-TOT(26:)
+      *     MOVE 'TOTAL PRODUCTOS:  '    TO WS-CONTENIDO-TOT(56:)
+      *     MOVE  WS-TOTAL-PROD          TO WS-CONTENIDO-TOT(80:)
+      *     PERFORM 31-ESCRIBE-COLA-TS
+      *     .
+      *COL02-F
+      *//END-PROGRAM
+      * NJM01-I NJM03-INI
+      **************************************************************
+      * PROCESO QUE VALIDA EL NOMBRE Y VERIFICA QUE NO TENGA UNA   *
+      * CARACTER EXTRA#O O BASURA                                  *
+      **************************************************************
+      *110-VALIDA-NOMBRE.
+      *    INSPECT WS-NOMBRE-COMP CONVERTING
+      *           'abcdefghijklmnopqrstuvwxyz¸È‚‰‡ÂÍÎËÔÓÏÙˆÚ˚˘·ÌÛ˙¶#'
+      *        TO 'ABCDEFGHIJKLMNOPQRSTUVWXYZUEAAAAEEEIIIOOOUUAIOUNN'
+      *
+      *    INSPECT WS-NOMBRE-COMP CONVERTING
+      *           '„¿¡¬√ƒ≈«»… ÀÃÕŒœ–“”‘’÷Ÿ⁄€‹ı¯˝ˇ'
+      *        TO 'AAAAAAACEEEEIIIIDOOOOOUUUUOOYY'
+      *
+      *    INSPECT WS-NOMBRE-COMP CONVERTING
+      *           ';|∞¨]"—$%&/()=?\ø°¥~+*®{¢[}!`<>,.:-_@Ò'
+      *        TO 'N     N  Y                           N'
+      *
+      *    INSPECT WS-NOMBRE-COMP REPLACING ALL LOW-VALUES BY SPACES.
+      *110-FIN. EXIT.
+      *NJM01-F NJM03-FIN
+      *VYG001-INI
+      ******************************************************************
+      *                  1001 0000 BORRAR COLAS TS                     *
+      ******************************************************************
+       1001-BORRAR-COLAS-TS.
+           EXEC CICS
+              DELETEQ TS QUEUE(WS-E03-TS)
+              NOHANDLE
+           END-EXEC.
+       1001-EXIT. EXIT.
+      *VYG001-FIN
+      *NOVA01-I
+      ******************************************************************
+      *                    0951-VALIDAR-NUMERO-CEL                     *
+      ******************************************************************
+       0951-VALIDAR-NUMERO-CEL.
+
+           INITIALIZE BGECDPE
+           MOVE 'C1'                        TO BDPE-OPCION
+           MOVE E03-ASUNTO(1:4)             TO BDPE-ENT-ENT
+           MOVE E03-ASUNTO(5:4)             TO BDPE-OFI-ENT
+           MOVE E03-ASUNTO(11:10)           TO BDPE-CTA-ENT
+      *COL02-I
+      *    MOVE '095-'                      TO WS-CONTENIDO-IND         00073200
+      *    MOVE 'VALIDA DEPOSITO ELECTRO'   TO WS-CONTENIDO-TOT         00073300
+      *    MOVE 'BEFORE DE'                 TO WS-CONTENIDO-TOT(26:)    00073300
+      *    MOVE  BDPE-ENTRADA               TO WS-CONTENIDO-TOT(36:)    00073300
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   00073500
+      *COL02-F
+           CALL RUT-BG7CDPE0 USING BGECDPE
+      *COL02-I
+      *    MOVE '095-'                      TO WS-CONTENIDO-IND         00073200
+      *    MOVE 'VALIDA DEPOSITO ELECTRO'   TO WS-CONTENIDO-TOT         00073300
+      *    MOVE 'AFTER DPE'                 TO WS-CONTENIDO-TOT(26:)    00073300
+      *    MOVE  BDPE-SALIDA                TO WS-CONTENIDO-TOT(36:)    00073300
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   00073500
+      *COL02-F
+           IF (BDPE-RETORNO  = CTE-RETORNO-OK)                          00169300
+              CONTINUE                                                  00169400
+           ELSE                                                         00169500
+            IF (BDPE-RETORNO  = '10')                                   00169300
+      *COL02-I
+              CONTINUE
+      *
+      *       MOVE '095-'                      TO WS-CONTENIDO-IND      00073200
+      *       MOVE 'VALIDA DEPOSITO ELECTRO'   TO WS-CONTENIDO-TOT      00073300
+      *       MOVE 'ERROR 10 '                 TO WS-CONTENIDO-TOT(26:) 00073300
+      *       MOVE  BDPE-CODI-ERROR            TO WS-CONTENIDO-TOT(36:) 00073300
+      *       MOVE  BDPE-DES1-ERROR            TO WS-CONTENIDO-TOT(46:) 00073300
+      *       MOVE  BDPE-DES2-ERROR            TO WS-CONTENIDO-TOT(66:) 00073300
+      *       PERFORM 31-ESCRIBE-COLA-TS                                00073500
+      *COL02-F
+            ELSE
+      *COL02-I
+      *       MOVE '095-'                      TO WS-CONTENIDO-IND      00073200
+      *       MOVE 'VALIDA DEPOSITO ELECTRO'   TO WS-CONTENIDO-TOT      00073300
+      *       MOVE 'ERROR OTR'                 TO WS-CONTENIDO-TOT(26:) 00073300
+      *       MOVE  BDPE-RETORNO               TO WS-CONTENIDO-TOT(36:) 00073300
+      *       MOVE  BDPE-CODI-ERROR            TO WS-CONTENIDO-TOT(40:) 00073300
+      *       MOVE  BDPE-DES1-ERROR            TO WS-CONTENIDO-TOT(50:) 00073300
+      *       MOVE  BDPE-DES2-ERROR            TO WS-CONTENIDO-TOT(70:) 00073300
+      *       PERFORM 31-ESCRIBE-COLA-TS                                00073500
+      *COL02-F                                                          00170900
+              MOVE '0055'                    TO KNPG-S-COD-RETORNO
+              MOVE BDPE-CODI-ERROR           TO KNPG-S-UBI-ERROR(1:7)
+              MOVE BDPE-DES1-ERROR           TO KNPG-S-UBI-ERROR(9:22)
+              MOVE BDPE-DES2-ERROR           TO KNPG-S-DET-MSG(1:)
+              PERFORM 998-FINAL
+            END-IF                                                      00172000
+           END-IF                                                       00172000
+           .
+      *NOVA01-F
+

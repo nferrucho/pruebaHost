@@ -1,0 +1,49 @@
+      *----------------------------------------------------------------*00000100
+      * FORMATO PARA LA FUNCIONALIDAD LISTA DE ADN                     *00000200
+      * GP-17113 - FEATURE: CES-474                                    *
+      *----------------------------------------------------------------*00000300
+      ******************************************************************
+      * REGISTO: EAN1-KNDCBAN1.                                        *00001400
+      *----------------------------------------------------------------*00001500
+       03 EAN1-KNDCBAN1.                                                00001600
+          05 EAN1-DATOS-ENTRADA.
+             10 EAN1-INUMCLIEN              PIC X(08).
+             10 EAN1-TIP-PRODUCTO           PIC X(02).
+             10 EAN1-TIP-ID                 PIC X(01).
+             10 EAN1-NUM-ID                 PIC X(15).
+             10 EAN1-FECH-OPERAC            PIC X(10).
+             10 EAN1-HORA-OPERAC            PIC X(08).
+             10 EAN1-FECH-CONTAB            PIC X(10).
+             10 EAN1-USUARIO                PIC X(08).
+             10 EAN1-TERMINAL               PIC X(04).
+             10 EAN1-TRANSACCION            PIC X(04).
+             10 EAN1-INDIC-MAS-E            PIC 9(02).
+             10 EAN1-TOTAL                  PIC 9(03).
+             10 EAN1-CANAL                  PIC X(04).
+             10 EAN1-SUBCANAL               PIC X(04).
+             10 EAN1-IND-LISTA              PIC 9(02).
+             10 EAN1-OPCION-LISTA           PIC X(04).
+             10 EAN1-SUBPRO                 PIC X(02).
+             10 EAN1-NUMPRO                 PIC X(35).
+             10 EAN1-SEUDON                 PIC X(20).
+          05 EAN1-DATOS-SALIDA.                                         00003800
+             10 EAN1-INDIC-MAS-S            PIC 9(02).
+             10 EAN1-DETALLE-ADN  .                                     00003800
+                15 EAN1-INDICE              PIC 9(003).                 00008100
+                15 EAN1-CONT-ADN            PIC X(020).                 00008100
+                15 EAN1-TIPO-ADN            PIC X(007).                 00008100
+                15 EAN1-DESCRIPCION         PIC X(016).                 00008100
+                15 EAN1-SALDO-ACT           PIC S9(15)V9(2).            00008100
+                15 EAN1-CUPO-TOT            PIC S9(15)V9(2).            00008100
+                15 EAN1-DIVISA              PIC X(003).                 00008100
+                15 EAN1-ALIAS               PIC X(020).                 00008100
+                15 EAN1-FAVORITO            PIC X(001).                 00008100
+                15 EAN1-CUENTA-ASOC         PIC X(020).                 00008100
+                15 EAN1-FEC-PAGO            PIC X(010).                 00008100
+                15 EAN1-PAGO-MINIMO         PIC S9(15)V9(2).            00008100
+                15 EAN1-ESTADO              PIC X(001).                 00008100
+          05 EAN1-CONTROL-RESPUESTA.                                    00570000
+             10 EAN1-COD-RESPUESTA          PIC X(02).                  00580000
+             10 EAN1-COD-ERROR              PIC X(07).                  00590000
+             10 EAN1-VALOR-ERROR-UNO        PIC X(20).                  00600000
+

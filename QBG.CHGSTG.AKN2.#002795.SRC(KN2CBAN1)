@@ -1,0 +1,272 @@
+      ***************************** TOP OF DATA ************************00000100
+      * KN2CBAN1   PROGRAMA QUE TRAE EL SALDO DISPONIBLE DE LOS PRODUC *00000200
+      *            ADELANTO DE NOMINA                                  *00000210
+      ******************************************************************00000300
+      *                  IDENTIFICATION DIVISION.                      *00000400
+      ******************************************************************00000500
+       IDENTIFICATION DIVISION.                                         00000600
+      ******************************************************************00000700
+       PROGRAM-ID.   KN2CBAN1.                                          00000800
+       AUTHOR.       NELSON MONCADA  .                                  00000900
+       DATE-WRITTEN. 2021/01/28.                                        00001000
+      ******************************************************************00001100
+      *  KN2CBAN1 - DESCRIPCION DEL MODULO                             *00001300
+      *             CCSS-5378
+      *----------------------------------------------------------------*
+      *        L O G    D E   M O D I F I C A C I O N E S              *
+      *----------------------------------------------------------------*
+      *  AUTOR   FECHA          DESCRIPCION                            *
+      * ------- -------- --------------------------------------------- *
+      * COL01   10/08/21 SE TRAE EL CAMPO DE BLOQUEO PARA CUENTAS ADN  *
+      * BBVA             CCSS-6428                                     *
+      * JCCS                                                           *
+      * ------- -------- --------------------------------------------- *
+      ******************************************************************00001750
+      *                  ENVIRONMENT  DIVISION                         *00001800
+      ******************************************************************00001900
+       ENVIRONMENT DIVISION.                                            00002000
+      ******************************************************************00002100
+      *                  CONFIGURATION SECTION                         *00002200
+      *---------********************************************************00002300
+       CONFIGURATION SECTION.                                           00002400
+      *                                                                 00002500
+       SOURCE-COMPUTER. IBM-3090.                                       00002600
+       OBJECT-COMPUTER. IBM-3090.                                       00002700
+      *                                                                 00002800
+       INPUT-OUTPUT SECTION.                                            00002900
+      ******************************************************************00003000
+      *                  DATA  DIVISION                                *00003100
+      ******************************************************************00003200
+       DATA DIVISION.                                                   00003300
+      ******************************************************************00003400
+      *                 WORKING-STORAGE SECTION                        *00003500
+      ******************************************************************00003600
+       WORKING-STORAGE SECTION.                                         00003700
+      ******************************************************************00008200
+      *                     CONSTANTES                                 *00008300
+      ******************************************************************00008400
+       01 CONSTANTES.                                                   00008500
+          05  CON-RET-OK                  PIC X(2)  VALUE '00'.         00008600
+          05  CON-RET-ERROR               PIC X(2)  VALUE '99'.         00008700
+          05  CON-PROGRAMA                PIC X(8)  VALUE 'KN2CBAN1'.   00008800
+          05  C-KNE9997                   PIC X(8)  VALUE 'KNE9997'.    00008900
+          05  C-KNE9035                   PIC X(8)  VALUE 'KNE9035'.    00008900
+          05  C-KNE9030                   PIC X(8)  VALUE 'KNE9030'.    00009000
+          05  CTE-KNE0607                 PIC X(8)  VALUE 'KNE0607'.    00009000
+          05  CON-ENTIDAD                 PIC X(04) VALUE '0013'.       00010101
+          05  CON-SI                      PIC X(01) VALUE 'S'.          00010200
+          05  CON-NO                      PIC X(01) VALUE 'N'.          00010201
+          05  RUT-PE9C1000                PIC X(08) VALUE 'PE9C1000'.   00010110
+          05  RUT-KN7CB095                PIC X(8)  VALUE 'KN7CB095'.   00008700
+          05  RUT-MP2CAZY6                PIC X(8)  VALUE 'MP2CAZY6'.   00008700
+          05  RUT-KN2CBAPR                PIC X(8)  VALUE 'KN2CBAPR'.   00008700
+          05  RUT-MP7CPAN1                PIC X(8)  VALUE 'MP7CPAN1'.
+          05  RUT-KN7CBAPR                PIC X(08) VALUE 'KN7CBAPR'.
+      ******************************************************************00010200
+      *                       SWITCHES                                 *00010300
+      ******************************************************************00010400
+       01 SW-SWITCHES.                                                  00010500
+      *                                                                 00010600
+          05 SW-CORRECTO                  PIC X(1)  VALUE 'S'.          00010700
+             88 CORRECTO                            VALUE 'S'.          00010800
+             88 NO-CORRECTO                         VALUE 'N'.          00010900
+          05 SW-ACTUALIZA-TS              PIC X(1)  VALUE 'N'.          00011500
+             88 SW-SI-ACTUALIZA                     VALUE 'S'.          00011600
+             88 SW-NO-ACTUALIZA                     VALUE 'N'.          00011700
+          05 SW-ESCRIBE-TS                PIC X(2)  VALUE 'S'.          00011710
+             88 SI-ESCRIBE                          VALUE 'S'.          00011720
+             88 NO-ESCRIBE                          VALUE 'N'.          00011730
+      *                                                                 00011800
+      ******************************************************************00011900
+      *                        VARIABLES                               *00012000
+      ******************************************************************00012100
+       01 W-VARIABLES.                                                  00012200
+          05 WS-NUMCLIEN                  PIC X(08) VALUE SPACES.       00013800
+          05 WS-CONT                      PIC 9(03) VALUE ZEROES.       00013820
+          05 WS-TOTAL-ENV                 PIC 9(03) VALUE ZEROES.       00013820
+          05 WS-HORA-OPERA                PIC X(06) VALUE SPACES.       00013820
+          05 WS-TIP-PRODUCTO              PIC X(02) VALUE SPACES.       00013820
+          05 WS-HORA-OPERA2               PIC 9(06) VALUE ZEROES.       00013820
+          05 WS-NUMERO-TEMPORAL           PIC 9(18) VALUE ZEROES.       00013820
+          05 WS-INDIC-MAS                 PIC 9(01) VALUE ZEROES.       00009610
+          05 WS-INDIC-LOG                 PIC X(01) VALUE SPACES.       00009610
+          05 WS-INDIC-TRZ                 PIC X(01) VALUE SPACES.       00009610
+          05 WS-CLIEN-TRZ                 PIC X(08) VALUE SPACES.       00009610
+          05 WS-INDIC-MAS-S               PIC 9(02) VALUE ZEROES.       00013910
+          05 WS-NOMBRE-COLA-TS            PIC X(08) VALUE SPACES.       00013910
+          05 WS-LONG-TS                   PIC S9(4) COMP.               00013911
+          05 WS-CONTENIDO-TS.                                           00013912
+             10 WS-CONTENIDO-IND          PIC X(04) VALUE SPACES.       00013913
+             10 WS-CONTENIDO-TOT          PIC X(532) VALUE SPACES.      00013914
+          05 WS-TSCONTENT                 PIC X(500) VALUE SPACES.      00013915
+          05 WSS-NUMERO-TARJ              PIC X(20).
+          05 WS-ESTADO-TC                 PIC X(02) VALUE SPACES.
+      ******************************************************************00011900
+      *                 TABLA CON DATOS DE CONSULTA                    *00012000
+      ******************************************************************00012100
+       01 WS-TABLA-CONSULTA.                                            00012200
+          05 WS-INFO-CONS   .
+             10 WS-SUBPRO                 PIC X(02) VALUE SPACES.
+             10 WS-NUMPRO                 PIC X(35) VALUE SPACES.
+             10 WS-SEUDON                 PIC X(20) VALUE SPACES.
+             10 WS-FAVORI                 PIC X(01) VALUE SPACES.
+             10 WS-DESCRIP                PIC X(30) VALUE SPACES.
+      ******************************************************************00011900
+      *                 TABLA CON DATOS DE LA SALIDA                   *00012000
+      ******************************************************************00012100
+       01 WS-TABLA-SALIDA.                                              00012200
+          05 WS-DATOS-SALIDA  .                                         00009700
+             10 WS-INDICE                 PIC 9(003).                   00009800
+             10 WS-CONT-ADN               PIC X(020).                   00009900
+             10 WS-TIPO-ADN               PIC X(007).                   00010000
+             10 WS-DESCRIPCION            PIC X(016).                   00010100
+             10 WS-SALDO-ACT              PIC S9(15)V9(2).              00010200
+             10 WS-CUPO-TOT               PIC S9(15)V9(2).              00010300
+             10 WS-DIVISA                 PIC X(003).                   00010400
+             10 WS-ALIAS                  PIC X(020).                   00010500
+             10 WS-FAVORITO               PIC X(001).                   00010501
+             10 WS-CUENTA-ASOC            PIC X(020).                   00010502
+             10 WS-FEC-PAGO               PIC X(010).
+             10 WS-PAGO-MINIMO            PIC S9(15)V9(2).
+             10 WS-ESTADO                 PIC X(01).
+      *COL01-I
+JCCS         10 WS-MCCBLOQU               PIC X(02).
+JCCS         10 WS-MCFBLOQU               PIC X(10).
+      *COL01-F
+      *----------------------------------------------------------------*00013920
+      *        COPY DE LA RUTINA DE PERSONAS PARA DATOS BASICOS        *00014000
+      *----------------------------------------------------------------*00014100
+       COPY PEWC1000.                                                   00014300
+      ******************************************************************
+      *             COPY AREA DE TRABAJO DE LA RUTINA KN2CBAPR
+      ******************************************************************
+       01 KNDCMAPR-01.
+        COPY KNDCMAPR.                                                  00004900
+      ******************************************************************
+      *             COPY AREA DE TRABAJO DE LA RUTINA KN7CB095
+      *----------------------------------------------------------------*
+       01 KNDCB095-01.
+        COPY KNDCB095.                                                  00004900
+      *-------------------------------------------------------------
+      * COPY DE COMUNICACION MP2CAZY6 (CONUSLTA ADN )
+      *-------------------------------------------------------------
+       01 MPWCAZY6-01.
+          COPY MPWCAZY6.
+       01 REG-CNDCAPR0.
+          COPY CNDCAPR0.
+      ******************************************************************00020100
+      *                LINKAGE SECTION                                 *00020200
+      ******************************************************************00020300
+       LINKAGE SECTION.                                                 00020400
+         01  DFHCOMMAREA.                                               00020410
+             COPY KNDCBAN1.                                             00020500
+             COPY QGECCAA.
+      ******************************************************************00020600
+      *                PROCEDURE DIVISION                              *00020700
+      ******************************************************************00020800
+       PROCEDURE DIVISION.                                              00020900
+             PERFORM 100000-INICIO                                      00021000
+             PERFORM 200000-PROCESO                                     00021100
+             PERFORM 300000-FINAL.                                      00021200
+      /                                                                 00021300
+      ******************************************************************00021400
+      *                    100000-INICIO                               *00021500
+      *   SE INICIALIZA EL COMMAREA                                    *00021600
+      ******************************************************************00021700
+       100000-INICIO.                                                   00021800
+           INITIALIZE  W-VARIABLES
+                       EAN1-DATOS-SALIDA
+           MOVE CON-RET-OK                 TO EAN1-COD-RESPUESTA        00022000
+           SET CORRECTO                    TO TRUE.                     00022100
+      ******************************************************************00022300
+      *                       200000-PROCESO                           *00022400
+      *    - LOGICA DEL PROCESO DE CONSULTA DE LOS PRESTAMOS ASOCIADOS *00022500
+      *                        A UN CLIENTE                            *00022600
+      ******************************************************************00022700
+       200000-PROCESO.                                                  00022800
+      *
+           PERFORM 230000-TRAE-SALDOS.                                  00023200
+      *
+      *---------------------------------------------------------------* 00033810
+      *    RUTINA PARA TRAER SALDOS DE LAS TARJETAS DE CREDITO        * 00033820
+      *---------------------------------------------------------------* 00033830
+       230000-TRAE-SALDOS.                                              00033840
+      *                                                                 00033856
+           INITIALIZE MPWCAZY6
+
+           MOVE '6'                        TO OZY6-OPCION
+           MOVE EAN1-INUMCLIEN             TO OZY6-NUMCLIE
+           MOVE EAN1-NUMPRO(1:4)           TO OZY6-MCNENTCO
+           MOVE EAN1-NUMPRO(5:4)           TO OZY6-MCNOFICO
+           MOVE EAN1-NUMPRO(11:2)          TO OZY6-MCTCONTR
+           MOVE EAN1-NUMPRO(13:8)          TO OZY6-MCNCONTR
+           MOVE EAN1-FECH-OPERAC           TO OZY6-FECOPER
+      *
+           EXEC CICS                                                    00028800
+             LINK PROGRAM('MP2CAZY6')                                   00028900
+             COMMAREA(MPWCAZY6)                                         00029000
+           END-EXEC                                                     00029100
+      *
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             00033862
+              IF OZY6-CODRETURN  EQUAL '00'                             00033863
+                 MOVE WS-NUMPRO            TO WS-CONT-ADN               00033866
+                 MOVE WS-SUBPRO            TO WS-TIPO-ADN               00033866
+                 MOVE WS-SEUDON            TO WS-ALIAS                  00033866
+                 MOVE WS-CONT              TO WS-INDICE                 00033866
+                 MOVE WS-FAVORI            TO WS-FAVORITO               00033866
+      *
+                 SUBTRACT  WANC-MCIDISPU FROM WANC-MCICUPVI
+                                         GIVING WS-SALDO-ACT
+      *
+                 MOVE 'ADELANTO DE NOMINA' TO WS-DESCRIPCION
+                 MOVE WANC-MCICUPVI        TO WS-CUPO-TOT
+                 MOVE  'COP'               TO WS-DIVISA
+                 MOVE WANC-MCNENTCO        TO WS-CUENTA-ASOC(1:4)
+                 MOVE WANC-MCNOFICU        TO WS-CUENTA-ASOC(5:4)
+                 MOVE '00'                 TO WS-CUENTA-ASOC(9:2)
+                 MOVE WANC-MCNCUENT        TO WS-CUENTA-ASOC(11:10)
+                 MOVE WANC-MCFPPAGO        TO WS-FEC-PAGO
+                 MOVE OZY6-PAG-MIN         TO WS-PAGO-MINIMO
+      *COL01-I
+JCCS             MOVE WANC-MCCBLOQU        TO WS-MCCBLOQU
+JCCS             MOVE WANC-MCFBLOQU        TO WS-MCFBLOQU
+      *COL01-F
+      *
+                 IF WANC-MCCESTAD EQUAL 'AC'
+                    IF WS-SALDO-ACT >= 0 OR
+                       OZY6-DEU-TOT > 0
+                       MOVE 'A'            TO WS-ESTADO
+                    ELSE
+                       MOVE 'C'            TO WS-ESTADO
+                    END-IF
+                 ELSE
+                    MOVE 'C'               TO WS-ESTADO
+                 END-IF
+                 MOVE WS-DATOS-SALIDA TO EAN1-DETALLE-ADN               00033872
+              ELSE                                                      00033879
+                 MOVE '99'                 TO EAN1-COD-RESPUESTA        00033880
+                 MOVE OZY6-CODERROR        TO EAN1-COD-ERROR            00033881
+                 MOVE OZY6-ERROR-VAR1      TO EAN1-VALOR-ERROR-UNO      00033882
+                 CONTINUE
+              END-IF                                                    00033888
+           ELSE
+              MOVE '50'                    TO EAN1-COD-RESPUESTA        00031000
+              MOVE 'MP7CB07X'              TO EAN1-COD-ERROR            00031100
+              MOVE 'ERROR EN EL CICS'      TO EAN1-VALOR-ERROR-UNO      00031200
+              PERFORM 300000-FINAL
+           END-IF.                                                      00031900
+      *----------------------------------------------------------------*00037400
+      *                       31-ESCRIBE-COLA-TS                       *00037500
+      *       ESCRIBE COLA TS DE LOG PARA VALIDAR FUNCIONAMIENTO       *00037600
+      *----------------------------------------------------------------*00037700
+       31-ESCRIBE-COLA-TS.                                              00037800
+           CONTINUE .
+      *
+      ******************************************************************00142100
+      *            300000-FIN-PROGRAMA                                 *00142300
+      ******************************************************************00142500
+       300000-FINAL.                                                    00142600
+      *                                                                 00033883
+           GOBACK.
+      *
+

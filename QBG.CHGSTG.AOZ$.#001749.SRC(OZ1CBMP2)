@@ -1,0 +1,1521 @@
+000100*----------------------------------------------------------------*
+000200*                  IDENTIFICATION DIVISION                       *
+000300*----------------------------------------------------------------*
+000400 IDENTIFICATION DIVISION.                                         
+000500 PROGRAM-ID. OZ1CBMP2.                                            
+ 00600 AUTHOR.     NOVATEC SOLUTIONS - ETP.                             
+000700 DATE-WRITTEN. 2014-06-14.                                        
+000800*----------------------------------------------------------------*
+000900*            DESCRIPCION : POSICION GLOBAL BMOVIL.               *
+      *----------------------------------------------------------------*
+      *         L O G    D E   M O D I F I C A C I O N E S             *
+      *----------------------------------------------------------------*
+      *  AUTOR   FECHA          DESCRIPCION                            *
+      * ------- -------- --------------------------------------------- *
+      * C342045 23/12/2014 OPTIMIZAR TRANSACCION OZP2 POSICION GLOBAL  *
+      * NJM01              BANCA MOVIL. DATOS BASICOS DEL CLIENTE      *
+      *-------- -------- --------------------------------------------- *
+      * C342045 23/02/2015 SE AGREGA PROCESO PARA VALIDAR EL MAIL SI   *
+      * NJM02              TIENE CARACTER EXTRA#O EN UNO DE SUS CAMPOS *
+      *-------- -------- --------------------------------------------- *
+      * CE15005 09/12/2016 GP15213 NUEVO UX BANCA MOVIL -INCLUIR CAMPO *
+      * NOVA01             FRANQUICIA TARJETA GESI COL472317S607738    *
+      *----------------------------------------------------------------*
+      * BBVA    20/03/2020 OPTIMIZACION POSICION GLOBAL B-MOVIL OZP2   *
+      * COL02              ELIMINAR LLAMADO TX KTM2                    *
+      *                    GP-17113 - FEATURE: CES-205                 *
+      *----------------------------------------------------------------*
+      * BBVA01  21/05/2020 OPTIMIZACION POSICION GLOBAL B-MOVIL OZP2    
+      * COL03              CES474-17113                                 
+      *----------------------------------------------------------------*
+      * COL04   09090714  SE AJUSTA EL LLAMADO A LAS COLAS TS PARA     *
+      * CE59732 GP17113   VALIDAR EL INDICADOR DE TRACE DESDE EL       *
+      * MN-291            MANTENIMIENTO DE TRANSACCIONES QM OPTMIMIZAC *
+      *----------------------------------------------------------------*
+      * COL05   21/04/2021 SE AGREGA RUTINA PARA ESCRITURA EN LOA O    *
+      * CE56353            LOB DEL CANAL CN                            *
+      *                    GP-17969 - FEATURE: CCSS-5633               *
+      *----------------------------------------------------------------*
+      * BBVA01  21/06/2021 OPTIMIZACION POSICION GLOBAL B-MOVIL OZP2    
+      * COL06              CES474-17113                                 
+      ******************************************************************
+      *----------------------------------------------------------------*
+001940*                 ENVIRONMENT DIVISION                           *
+001950*----------------------------------------------------------------*
+001960 ENVIRONMENT DIVISION.                                            
+001970 CONFIGURATION SECTION.                                           
+001980 SOURCE-COMPUTER.                                                 
+001990     IBM-3090.                                                    
+002000 OBJECT-COMPUTER.                                                 
+002100     IBM-3090.                                                    
+002200*----------------------------------------------------------------*
+002300*                  DATA DIVISION                                 *
+002400*----------------------------------------------------------------*
+002500 DATA DIVISION.                                                   
+002600 WORKING-STORAGE SECTION.                                         
+002700*----------------------------------------------------------------*
+002800*        COPY DE COMUNICACION CON LA RUTINA DE PARAMETROS        *
+002900*----------------------------------------------------------------*
+       01 REG-RVWCPRM0.                                                 
+          COPY RVWCPRM0.                                                
+      *COL04-I                                                          
+      *----------------------------------------------------------------*
+      * COPY MODULO CONSULTA ESPECIFIDADES POR FUNCION                 *
+      *----------------------------------------------------------------*
+          COPY QCECESC.                                                 
+      *COL04-F                                                          
+002700*----------------------------------------------------------------*
+002800*        COPY DE COMUNICACION CON EL PROGRAMA APLICATIVO         *
+002900*----------------------------------------------------------------*
+       01 REG-KNWCBM01.                                                 
+          COPY KNWCBM01.                                                
+002700*----------------------------------------------------------------*
+002800*        COPY DEL FORMATO DE SALIDA DE ERRORES POSICION GLOBAL   *
+002900*----------------------------------------------------------------*
+       01 REG-KNWCP2BS.                                                 
+          COPY KNWCP2BS.                                                
+      *----------------------------------------------------------------*
+      *       COPY DEL FORMATO DE SALIDA CON LA RESPUESTA AL WAS       *
+      *----------------------------------------------------------------*
+          COPY KNWCPGBS.                                                
+      *                                                                 
+      *----------------------------------------------------------------*
+      *       COPY DEL FORMATO DE SALIDA CON LA RESPUESTA AL WAS       *
+      *----------------------------------------------------------------*
+          COPY KNWCP1BS.                                                
+      *COL02-I                                                          
+      ******************* COPY MONITOR PLUS *************************** 
+      *01  CNWCMP01-01.                                                 
+      *    COPY CNWCMP01.                                               
+      *COL02-I                                                          
+      *NJM01-INI                                                        
+      *----------------------------------------------------------------*
+      * COPY DE COMUNICACION PARA TRAER DATOS BASICOS DE PERSONAS      *
+      *----------------------------------------------------------------*
+      *COL03-I                                                          
+      *    COPY PEWC1000.                                               
+           COPY PEWCOZMO.                                               
+      *COL03-F                                                          
+      *COL05-I                                                          
+      ******************************************************************
+      *  COPY DE RUTINA OZ1CLOG0                                       *
+      ******************************************************************
+       01 REG-OZWCLOG0.                                                 
+           COPY OZWCLOG0.                                               
+      *COL05-F                                                          
+      *----------------------------------------------------------------*
+      *             COPY AREA DE TRABAJO DE LA RUTINA KN7CBUSU          
+      *----------------------------------------------------------------*
+       01 KNDBMUSU-01.                                                  
+          COPY KNDBMUSU.                                                
+      *NJM01-FIN                                                        
+002700*----------------------------------------------------------------*
+002800*                       VARIABLES                                *
+002900*----------------------------------------------------------------*
+003000 01 WS-VARIABLES.                                                 
+      *NOVA01-I                                                         
+      *   05 WS-DATOS-SAL-REG            PIC X(144) VALUE SPACES.       
+          05 WS-DATOS-SAL-REG            PIC X(164) VALUE SPACES.       
+      *NOVA01-F                                                         
+          05 WS-ITEM-TS                  PIC S9(04) COMP VALUE ZEROS.   
+          05 WS-ITEM-TS-ER               PIC S9(04) COMP VALUE ZEROS.   
+          05 WS-VAR-NUM-2                PIC 9(02) VALUE ZEROS.         
+          05 WS-VAR-NUM-3                PIC 9(03) VALUE ZEROS.         
+      *NJM01-INI                                                        
+          05 WS-NOMBRE-COMP              PIC X(60) VALUE SPACES.        
+          05 WS-MAIL                     PIC X(80) VALUE SPACES.        
+      *NJM01-FIN                                                        
+       01 WS-COLA-DC1.                                                  
+          05 WS-LONG-DC1                 PIC S9(4) COMP VALUE ZEROES.   
+          05 WS-TS.                                                     
+             10 WS-PREFIJO-DC1           PIC X(4)  VALUE SPACES.        
+             10 WS-SUFIJO-DC1            PIC X(4)  VALUE SPACES.        
+          05 WS-CONTENIDO-DC1.                                          
+             10 WS-NOMBRE-FORMATO        PIC X(8)  VALUE SPACES.        
+      *NOVA01-I                                                         
+      *      10 WS-CONT-FORMATO          PIC X(144) VALUE SPACES.       
+             10 WS-CONT-FORMATO          PIC X(164) VALUE SPACES.       
+          05 WS-CONTENIDO-DC2.                                          
+             10 WS-NOMBRE-FORMAT2        PIC X(8)  VALUE SPACES.        
+             10 WS-CONT-FORMAT2          PIC X(175) VALUE SPACES.       
+      *NOVA01-F                                                         
+                                                                        
+       01 W-USUARIO-MQ                   PIC X(08).                     
+       01 W-AOR                          PIC X(04).                     
+       01 W-LONGITUD-AREA                PIC S9(04) COMP VALUE ZEROS.   
+       01 NOMBRE-DEL-CICS                PIC X(04).                     
+       01 PRIMERA-LETRA-CICS             PIC X(04).                     
+002700*----------------------------------------------------------------*
+002800*                       CONSTANTES                               *
+002900*----------------------------------------------------------------*
+003000 01  RUT-RUTINAS.                                                 
+003100     05 RUT-RV7CPRM0                  PIC X(08) VALUE 'RV7CPRM0'. 
+           05 PGM-KN2CBMP1                  PIC X(08) VALUE 'KN2CBMP1'. 
+      *COL06-I                                                          
+           05 PGM-KN2CBMPA                  PIC X(08) VALUE 'KN2CBMPA'. 
+      *COL06-F                                                          
+           05 PGM-KN2CBMPG                  PIC X(08) VALUE 'KN2CBMPG'. 
+           05 PGM-KN2CBMPT                  PIC X(08) VALUE 'KN2CBMPT'. 
+      *NJM01-INI                                                        
+      *COL03-I                                                          
+      *    05 RUT-PE9C1000                  PIC X(08) VALUE 'PE9C1000'. 
+           05 RUT-PE9COZMO                  PIC X(08) VALUE 'PE9COZMO'. 
+      *COL03-F                                                          
+           05 RUT-KN7CBUSU                  PIC X(08) VALUE 'KN7CBUSU'. 
+      *COL05-I                                                          
+      *     RUTINA QUE INSERTA DATOS DE OPERACION EN LOG MOVIL.         
+           05 RUT-OZ1CLOG0                  PIC X(08) VALUE 'OZ1CLOG0'. 
+      *COL05-F                                                          
+      *------------------------ PARAMETROS ----------------------------*
+       01  WS-PARAMETROS.                                               
+           05 WS-CANAL-ENTRADA              PIC X(04) VALUE SPACES.     
+           05 WS-COD-ENTIDAD                PIC X(04) VALUE SPACES.     
+           05 WS-FECHA-OPERA                PIC X(10) VALUE SPACES.     
+      *NJM01FIN                                                         
+010700*----------------------------------------------------------------*
+010800*              VARIABLES WORK PARA ESCRIBIR TRAZA                *
+010900*----------------------------------------------------------------*
+       01 WS-WORK-TRAZA.                                                
+          05 WS-NOMBRE-COLA-TS        PIC X(08)  VALUE SPACES.          
+          05 WS-LONG-TS               PIC S9(4)  COMP.                  
+          05 WS-CONTENIDO-TS.                                           
+             10 WS-CONTENIDO-IND      PIC X(04)  VALUE SPACES.          
+             10 WS-CONTENIDO-FILL     PIC X(01)  VALUE '-'.             
+             10 WS-CONTENIDO-TOT      PIC X(532) VALUE SPACES.          
+010700*----------------------------------------------------------------*
+010800*                       SWITCHES                                 *
+010900*----------------------------------------------------------------*
+011000 01 SW-SWITCHES.                                                  
+011100*                                                                 
+          05 SW-ESCRIBIR-TRAZA           PIC X(01)  VALUE 'N'.          
+             88 NO-ESCRIBE                          VALUE 'N'.          
+             88 SI-ESCRIBE                          VALUE 'S'.          
+029500*                                                                 
+          05 SW-HAY-DATOS                PIC X(01)  VALUE 'N'.          
+             88 NO-DATO                             VALUE 'N'.          
+             88 SI-DATO                             VALUE 'S'.          
+029500*                                                                 
+000000    05 SW-HAY-DATOS-ER             PIC X(01)  VALUE 'N'.          
+             88 NO-DATO-ER                          VALUE 'N'.          
+             88 SI-DATO-ER                          VALUE 'S'.          
+029600*----------------------------------------------------------------*
+029700 LINKAGE SECTION.                                                 
+029800 01 DFHCOMMAREA.                                                  
+029900*----------------------------------------------------------------*
+      *           BLOQUE DE COMUNICACIONES CON LA ARQUITECTURA:        *
+      *               REGISTRO DE CONTROL DE LA SESION                 *
+      *----------------------------------------------------------------*
+          COPY QGECCAA.                                                 
+      *COL04-I                                                          
+      *----------------------------------------------------------------*
+      *     COPY ESPECIFIDADES POR FUNCION                             *
+      *----------------------------------------------------------------*
+          COPY QGECESCM.                                                
+      *COL04-F                                                          
+      *----------------------------------------------------------------*
+      *     COPY DE LA TRAZA O MENSAJE DE ENTRADA DESDE CICS/BRIDGE    *
+      *----------------------------------------------------------------*
+          COPY KNBM00E.                                                 
+      *                                                                 
+      *----------------------------------------------------------------*
+      *       COPY DEL FORMATO DE SALIDA CON LA RESPUESTA AL WAS       *
+      *----------------------------------------------------------------*
+      *   COPY KNWCP1BS.                                                
+030100*----------------------------------------------------------------*
+030200*                PROCEDURE DIVISION                              *
+030300*----------------------------------------------------------------*
+030400 PROCEDURE DIVISION.                                              
+030500*----------------------------------------------------------------*
+030600*     RUTINA PRINCIPAL DE PROCESO                                *
+030700*----------------------------------------------------------------*
+030800 000-PRINCIPAL.                                                   
+030900     PERFORM 010-INICIO                                           
+031000     PERFORM 020-PROCESO                                          
+031100     PERFORM 998-FINAL.                                           
+031200*                                                                 
+031300*----------------------------------------------------------------*
+031400*     RUTINA INICIO DEL PROCESO INICIALIZACION DE VARIABLES      *
+031500*----------------------------------------------------------------*
+031600 010-INICIO.                                                      
+031700*                                                                 
+031800     EXEC CICS                                                    
+031900        IGNORE CONDITION ERROR                                    
+032000     END-EXEC                                                     
+032100*                                                                 
+           SET NO-ESCRIBE                     TO TRUE                   
+           MOVE SPACES                        TO KNPG-S-RETORNO         
+      *                                                                 
+           SET ADDRESS OF KNBM00E             TO CAA-PTR-COPYIN         
+           MOVE SPACES                        TO CAA-CODTRAN-SIG        
+                                                                        
+      *COL04-I                                                          
+           PERFORM 112-CONSULTA-ESC-CANAL                               
+      *COL04-F                                                          
+           MOVE 'OZ1CBMP2'                    TO WS-NOMBRE-COLA-TS      
+           MOVE 'OZ1CBMP2'                    TO WS-NOMBRE-COLA-TS      
+      *CREA  COLA TS PARA EL CONTROL DE LOS DATOS DEL SENSO DE ASUNTOS  
+      *DE LA SEGUNDA PARTE DE LA APLICACION                             
+                                                                        
+           MOVE 'KN'                          TO KNPG-COLA-TS-OK(1:2)   
+           MOVE CAA-TERMINAL                  TO KNPG-COLA-TS-OK(3:4)   
+           MOVE 'OK'                          TO KNPG-COLA-TS-OK(7:2)   
+           MOVE BM10-NUMCLIEN                 TO KNPG-COLA-TS-OK(9:8)   
+                                                                        
+           MOVE KNPG-COLA-TS-OK               TO KNPG-COLA-TS-ER        
+           MOVE 'ER'                          TO KNPG-COLA-TS-ER(7:2)   
+      *                                                                 
+           PERFORM 101-BUSCA-PARAM-TRAZA                                
+      *NJM01-INI                                                        
+           MOVE BM10-NUMCLIEN                 TO KNPG-NUMERO-CL         
+           MOVE BM10-TIP-ID                   TO KNPG-TIPOID            
+           MOVE BM10-NUM-ID                   TO KNPG-NUMERO-ID         
+           MOVE BM10-CANAL                    TO KNPG-CANAL             
+           MOVE BM10-SUBCANAL                 TO KNPG-SCANAL            
+           PERFORM 103-BUSCA-DAT-PERSONAS                               
+           .                                                            
+      *NJM01-FIN                                                        
+      *NJM01-INI                                                        
+      *----------------------------------------------------------------*
+      *          BUSCA EL DATO COMPLEMENTARIO PARA PERSONAS            *
+      * SI SE INFORMA EL NUMERO DE CLIENTE ENTONCES SE BUSCA EL TIPO Y *
+      *NUMERO DE IDENTIFICACION. SI INFORMA ESTOS SE BUSCA EL NUMERO DE*
+      *CLIENTE                                                         *
+      *----------------------------------------------------------------*
+       103-BUSCA-DAT-PERSONAS.                                          
+      *NJMAG                                                            
+           MOVE SPACES                            TO KNPG-SALIDA        
+           MOVE ZEROES                            TO KNPG-S-COD-RETORNO 
+      *NJMAG                                                            
+      *COL03-I                                                          
+           INITIALIZE PEOZMO-BASICOS                                    
+      *    MOVE SPACES                            TO DATOS-PECENTID     
+      *                                              DATOS-OFIAPE       
+      *                                              DATOS-CODISER      
+      *                                              DATOS-NUMECTA      
+      *                                              DATOS-CLAINTER     
+      *                                              DATOS-SECINTER     
+      *                                              KNWCBM00           
+           MOVE SPACES                            TO KNWCBM00           
+                                                                        
+           MOVE '1'                               TO PEOZMO-OPCION      
+      *COL03-F                                                          
+                                                                        
+           IF KNPG-NUMERO-ID  EQUAL SPACES OR LOW-VALUES                
+      *COL03-I                                                          
+      *       MOVE '1'                            TO DATOS-OPCION       
+      *       MOVE KNPG-NUMERO-CL                 TO DATOS-NUMCLIEN     
+              MOVE KNPG-NUMERO-CL                 TO PEOZMO-NUMCLIEN    
+      *COL03-F                                                          
+           END-IF                                                       
+                                                                        
+           IF KNPG-NUMERO-CL  EQUAL SPACES OR LOW-VALUES                
+      *COL03-I                                                          
+      *       MOVE '2'                            TO DATOS-OPCION       
+      *       MOVE KNPG-TIPOID                    TO DATOS-CODIDENT     
+      *       MOVE KNPG-NUMERO-ID                 TO DATOS-CLAIDENT     
+              MOVE KNPG-TIPOID                    TO PEOZMO-CODIDENT    
+              MOVE KNPG-NUMERO-ID                 TO PEOZMO-CLAIDENT    
+      *COL03-F                                                          
+           END-IF                                                       
+      *                                                                 
+      *COL06-I                                                          
+      *    MOVE '103-'                            TO WS-CONTENIDO-IND   
+      *    MOVE 'ANTES DE IR A PERSONAS '         TO WS-CONTENIDO-TOT   
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+      *                                                                 
+      *COL03-I                                                          
+      *    CALL  RUT-PE9C1000 USING DATOS-BASICOS                       
+           PERFORM 103-LLAMA-RUT-PE9COZMO                               
+      *COL03-F                                                          
+      *COL06-I                                                          
+      *    MOVE '103-'                       TO WS-CONTENIDO-IND        
+      *    MOVE 'DESPUES DE IR A PERSONAS'   TO WS-CONTENIDO-TOT(1:24)  
+      *    MOVE 'DATOS-BASICOS           '   TO WS-CONTENIDO-TOT(26:24) 
+      *    MOVE DATOS-BASICOS                TO WS-CONTENIDO-TOT(53:)   
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+      *COL03-I                                                          
+      *    MOVE DATOS-NUMCLIEN               TO KNPG-NUMERO-CL          
+      *    MOVE DATOS-CODIDENT               TO KNPG-TIPOID             
+      *    MOVE DATOS-CLAIDENT               TO KNPG-NUMERO-ID          
+      *                                                                 
+      *    MOVE DATOS-NUMCLIEN               TO KNPG-NUMERO-CLI         
+      *    MOVE DATOS-CODIDENT               TO KNPG-TIPO-ID            
+      *    MOVE DATOS-CLAIDENT               TO KNPG-NUMERO-IDE         
+           MOVE PEOZMO-NUMCLIEN              TO KNPG-NUMERO-CL          
+                                                KNPG-NUMERO-CLI         
+           MOVE PEOZMO-CODIDENT              TO KNPG-TIPOID             
+                                                KNPG-TIPO-ID            
+           MOVE PEOZMO-CLAIDENT              TO KNPG-NUMERO-ID          
+                                                KNPG-NUMERO-IDE         
+           MOVE PEOZMO-PRIAPE                TO WS-NOMBRE-COMP(1:20)    
+           MOVE PEOZMO-SEGAPE                TO WS-NOMBRE-COMP(21:20)   
+           MOVE PEOZMO-NOMBRE                TO WS-NOMBRE-COMP(41:20)   
+      *COL03-F                                                          
+      *    MOVE PE001-PRIAPE                 TO KNPG-NOMBRE(1:20)       
+      *    MOVE PE001-SEGAPE                 TO KNPG-NOMBRE(21:20)      
+      *    MOVE PE001-NOMBRE                 TO KNPG-NOMBRE(41:20)      
+      *COL03-I                                                          
+      *    MOVE PE001-PRIAPE                 TO WS-NOMBRE-COMP(1:20)    
+      *    MOVE PE001-SEGAPE                 TO WS-NOMBRE-COMP(21:20)   
+      *    MOVE PE001-NOMBRE                 TO WS-NOMBRE-COMP(41:20)   
+           MOVE PEOZMO-PRIAPE                TO WS-NOMBRE-COMP(1:20)    
+           MOVE PEOZMO-SEGAPE                TO WS-NOMBRE-COMP(21:20)   
+           MOVE PEOZMO-NOMBRE                TO WS-NOMBRE-COMP(41:20)   
+      *COL03-F                                                          
+      **                                                                
+           PERFORM 110-VALIDA-NOMBRE                                    
+           MOVE WS-NOMBRE-COMP               TO KNPG-NOMBRE             
+      **                                                                
+      *COL03-I                                                          
+      *    IF PE001-SEXO EQUAL 'M'                                      
+           IF PEOZMO-SEXO EQUAL 'M'                                     
+      *COL03-F                                                          
+              MOVE 'MASCULINO'               TO KNPG-SEXO               
+           ELSE                                                         
+              MOVE 'FEMENINO '               TO KNPG-SEXO               
+           END-IF                                                       
+      *NJM02-INI                                                        
+      *COL03-I                                                          
+      *    MOVE PE094-EMAIL                  TO KNPG-EMAIL              
+           INITIALIZE PEOZMO-BASICOS                                    
+                                                                        
+           MOVE '2'                          TO PEOZMO-OPCION           
+           MOVE KNPG-NUMERO-CL               TO PEOZMO-NUMCLIEN         
+                                                                        
+           PERFORM 103-LLAMA-RUT-PE9COZMO                               
+                                                                        
+           MOVE PEOZMO-EMAIL                 TO WS-MAIL                 
+      *COL03-F                                                          
+           PERFORM 111-VALIDA-MAIL                                      
+           MOVE WS-MAIL                      TO KNPG-EMAIL              
+      *NJM02-FIN                                                        
+           PERFORM 104-VALIDA-CLIENTE                                   
+      *COL03-I                                                          
+           .                                                            
+      *----------------------------------------------------------------*
+      *          BUSCA EL DATO COMPLEMENTARIO PARA PERSONAS            *
+      * SI SE INFORMA EL NUMERO DE CLIENTE ENTONCES SE BUSCA EL TIPO Y *
+      *NUMERO DE IDENTIFICACION. SI INFORMA ESTOS SE BUSCA EL NUMERO DE*
+      *CLIENTE                                                         *
+      *----------------------------------------------------------------*
+       103-LLAMA-RUT-PE9COZMO.                                          
+                                                                        
+           CALL  RUT-PE9COZMO USING PEOZMO-BASICOS                      
+      *                                                                 
+           IF PEOZMO-COD-RETORNO  NOT EQUAL '00'                        
+              AND PEOZMO-COD-RETORNO  NOT EQUAL SPACES                  
+              MOVE '0050'                    TO KNPG-S-COD-RETORNO      
+              MOVE PEOZMO-COD-ERROR          TO KNPG-S-UBI-ERROR(1:7)   
+              MOVE PEOZMO-VALOR-ERROR-UNO(1:22)TO KNPG-S-UBI-ERROR(9:22)
+              MOVE PEOZMO-VALOR-ERROR-UNO(23:18) TO KNPG-S-DET-MSG      
+              MOVE PEOZMO-VALOR-ERROR-DOS(1:11)  TO KNPG-S-DET-MSG(20:) 
+              PERFORM 998-FINAL                                         
+           END-IF  .                                                    
+      *    IF DATOS-COD-RETORNO       NOT = '00'                        
+      *       MOVE 'ERR0'                     TO WS-CONTENIDO-IND       
+      *       MOVE 'ERROR EN RUTINA PERSONAS' TO WS-CONTENIDO-TOT(1:24) 
+      *       MOVE 'DATOS-COD-RETORNO:  '     TO WS-CONTENIDO-TOT(26:24)
+      *       MOVE '≥'                        TO WS-CONTENIDO-TOT(53:)  
+      *       MOVE  DATOS-COD-RETORNO         TO WS-CONTENIDO-TOT(55:)  
+      *       MOVE '≥'                        TO WS-CONTENIDO-TOT(58:)  
+      *       MOVE  DATOS-VALOR-ERROR-UNO     TO WS-CONTENIDO-TOT(60:)  
+      *       MOVE '≥'                        TO WS-CONTENIDO-TOT(100:3)
+      *       MOVE  DATOS-VALOR-ERROR-DOS     TO WS-CONTENIDO-TOT(103:) 
+      *       PERFORM 31-ESCRIBE-COLA-TS                                
+      *                                                                 
+      *       MOVE '0050'                    TO KNPG-S-COD-RETORNO      
+      *       MOVE DATOS-COD-ERROR           TO KNPG-S-UBI-ERROR(1:7)   
+      *       MOVE DATOS-VALOR-ERROR-UNO(1:22) TO KNPG-S-UBI-ERROR(9:22)
+      *       MOVE DATOS-VALOR-ERROR-UNO(23:18) TO KNPG-S-DET-MSG       
+      *       MOVE DATOS-VALOR-ERROR-DOS(1:11)  TO KNPG-S-DET-MSG(20:)  
+      *       PERFORM 998-FINAL                                         
+      *    END-IF  .                                                    
+      *COL03-F                                                          
+      *                                                                 
+      *----------------------------------------------------------------*
+      *                   104-VALIDA-CLIENTE                           *
+      * VALIDA LA EXISTENCIA DEL CLIENTE EN LA TABLA KNDTUSU CONTRA LOS*
+      * DATOS DE IDENTIFICACION QUE ESTAN EN PERSONAS PARA IDENTIFICAR *
+      *             SI EL CLIENTE CAMBIO DE IDENTIFICACION             *
+      *----------------------------------------------------------------*
+       104-VALIDA-CLIENTE.                                              
+                                                                        
+           MOVE '1'                     TO  EUSU-OPCION                 
+           MOVE KNPG-NUMERO-CL          TO  EUSU-CNCCLIPU               
+      *    MOVE WS-CANAL-ENTRADA        TO  EUSU-CNCNLIDA               
+           MOVE KNPG-SCANAL             TO  EUSU-CNCNLIDA               
+                                                                        
+           EXEC CICS                                                    
+             LINK PROGRAM(RUT-KN7CBUSU)                                 
+             COMMAREA(EUSU-KNDBMUSU)                                    
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             
+              IF EUSU-COD-RESPUESTA EQUAL TO ZEROES OR                  
+                 EUSU-COD-RESPUESTA EQUAL TO SPACES                     
+                 IF EUSU-SAL-CNTPDOCI     EQUAL  TO KNPG-TIPOID         
+                    AND EUSU-SAL-CNDOCIDE EQUAL  TO KNPG-NUMERO-ID      
+                    CONTINUE                                            
+                 ELSE                                                   
+                    MOVE '0070'                  TO KNPG-S-COD-RETORNO  
+                    MOVE '104-VALIDA-CLIENTE'    TO KNPG-S-UBI-ERROR    
+                    MOVE 'ID DEL CLIENTE CAMBIA' TO KNPG-S-DET-MSG      
+NJM02               PERFORM 202-FMT-SALIDA-ERR                          
+                    PERFORM 998-FINAL                                   
+                 END-IF                                                 
+              ELSE                                                      
+                 MOVE '0030'                   TO KNPG-S-COD-RETORNO    
+                 MOVE EUSU-COD-ERROR           TO KNPG-S-UBI-ERROR(1:7) 
+                 MOVE '104-VALIDA-CLIENTE'     TO KNPG-S-UBI-ERROR(10:) 
+                 MOVE 'ERROR RUTINA KN7CBUSU'  TO KNPG-S-DET-MSG        
+NJM02            PERFORM 202-FMT-SALIDA-ERR                             
+                 PERFORM 998-FINAL                                      
+           ELSE                                                         
+              MOVE '0020'                      TO KNPG-S-COD-RETORNO    
+              MOVE 'ERROR KN7CBUSU'            TO KNPG-S-UBI-ERROR      
+              MOVE 'EJECUCION KN7CBUSU     '   TO KNPG-S-DET-MSG        
+NJM02         PERFORM 202-FMT-SALIDA-ERR                                
+              PERFORM 998-FINAL                                         
+           END-IF.                                                      
+      *NJM01-FIN                                                        
+034600*----------------------------------------------------------------*
+034700*   VALIDA SI SE ENCUENTRA ACTIVA LA TRAZA PARA ESCRIBIR O NO    *
+034800*----------------------------------------------------------------*
+       101-BUSCA-PARAM-TRAZA.                                           
+                                                                        
+           MOVE  '0200'                    TO WC-PRM-ENT-SECCION        
+           MOVE  'TRAZA'                   TO WC-PRM-ENT-ELEMENTO       
+                                                                        
+           EXEC CICS                                                    
+                LINK PROGRAM(RUT-RV7CPRM0)                              
+                COMMAREA(RVWCPRM0)                                      
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             
+              IF WC-PRM-SAL-COD-RET EQUAL '0000'                        
+                 IF WC-PRM-SAL-MENSAJE(1:2) EQUAL 'SI'                  
+                    IF WC-PRM-SAL-MENSAJE(3:8) EQUAL BM10-NUMCLIEN      
+                       SET SI-ESCRIBE      TO TRUE                      
+                    END-IF                                              
+                 END-IF                                                 
+              END-IF                                                    
+           ELSE                                                         
+              MOVE '0080'                      TO KNPG-S-COD-RETORNO    
+              MOVE 'BUSCA PARAMETRO TRAZA'     TO KNPG-S-UBI-ERROR      
+              MOVE 'ERROR LLAMADO RUTINA PRM'  TO KNPG-S-DET-MSG        
+              PERFORM 998-FINAL                                         
+           END-IF                                                       
+      *             IF WC-PRM-SAL-MENSAJE(3:8) EQUAL KNPG-NUMERO-CL     
+           .                                                            
+037500*----------------------------------------------------------------*
+037500*                   PROCESO DE LA TRANSACCION                    *
+037500*            EJECUTA LAS DOS PARTES DE LA APLICACION             *
+037500*                                                                *
+000000* PARTE 1 - ACTUALIZA DATOS TABLA E CONTROL KNDTAPR              *
+000000* PARTE 2 - REALIZA SENSO DE ASUNTOS PARA ENVIAR AL DISPOSITIVO  *
+037500*----------------------------------------------------------------*
+037600 020-PROCESO.                                                     
+                                                                        
+           PERFORM 020-PRIMERA-PARTE                                    
+           PERFORM 020-SEGUNDA-PARTE                                    
+      *COL05-I                                                          
+      *SE REALIZA VALICACION DE RETORNO PARA LLAMADO A LOG MOVIL        
+           IF KNPG-S-COD-RETORNO EQUAL '0000'  OR SPACES                
+              PERFORM 30300-INSERTA-LOG-MOVIL                           
+           END-IF                                                       
+      *COL05-F                                                          
+           .                                                            
+037500*----------------------------------------------------------------*
+037500*          PRIMERA PARTE DEL PROCESO DE POSICION GLOBAL          *
+ 37500* TRAE LOS DATOS BASICOS DEL CLIENTE Y ACTUALIZALOS DATOS DE LOS *
+      * ASUNTOS DEL CLIENTE EN LA TABLA DE CONTROL DE LA TABLA KNDTAPR *
+037500*----------------------------------------------------------------*
+037600 020-PRIMERA-PARTE.                                               
+      *COL06-I                                                          
+037800*    MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'INICIO PROCESO PG  *** '      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'PRIMERA PARTE  ***     '      TO WS-CONTENIDO-TOT(26:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+NJM02 *    INITIALIZE                             KNWCBM01              
+NJM02 *                                           KNWCBM00              
+                                                                        
+           MOVE SPACES                         TO KNPG-SALIDA           
+           MOVE ZEROES                         TO KNPG-S-COD-RETORNO    
+                                                                        
+           MOVE BM10-NUMCLIEN                  TO KNPG-NUMERO-CL        
+           MOVE BM10-TIP-ID                    TO KNPG-TIPOID           
+           MOVE BM10-NUM-ID                    TO KNPG-NUMERO-ID        
+           MOVE BM10-CANAL                     TO KNPG-CANAL            
+           MOVE BM10-SUBCANAL                  TO KNPG-SCANAL           
+           MOVE BM10-OPCION                    TO KNPG-OPCION           
+           MOVE BM10-IND-MAS-E                 TO KNPG-IND-PAGINA-E     
+           MOVE BM10-PRODUCTO                  TO KNPG-PRODUCTO         
+           MOVE BM10-TOTAL                     TO KNPG-TOTAL            
+                                                                        
+           MOVE CAA-ENTIDAD                    TO KNPG-CAA-ENTIDAD      
+           MOVE CAA-TERMINAL                   TO KNPG-CAA-TERMINAL     
+           MOVE CAA-CODTRAN                    TO KNPG-CAA-CODTRAN      
+           MOVE CAA-FECHA-OPER2                TO KNPG-CAA-FECHA-OPER2  
+           MOVE CAA-FECHA-CONT2                TO KNPG-CAA-FECHA-CONT2  
+           MOVE CAA-HORA-TRANS                 TO KNPG-CAA-HORA-TRANS   
+           MOVE CAA-HORA-TRANSED               TO KNPG-CAA-HORA-TRANSED 
+           MOVE CAA-USERID                     TO KNPG-CAA-USERID       
+                                                                        
+037800     MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900     MOVE 'INICIO PROCESO PG      '      TO WS-CONTENIDO-TOT      
+      *COL06-I                                                          
+037900*    MOVE 'DATOS DE ENTRADA:      '      TO WS-CONTENIDO-TOT(26:) 
+037900*    MOVE  KNPG-ENTRADA                  TO WS-CONTENIDO-TOT(52:) 
+037900*    MOVE  KNPG-ENTRADA-CAA              TO WS-CONTENIDO-TOT(110:)
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+      *    DISPLAY 'OZ1CBMP2 LLAMA KN2CBMPG:  ' KNWCBM01                
+037800*    MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'LLAMA PROGRAMA KN2CBMPG'      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'DATOS DE ENTRADA:      '      TO WS-CONTENIDO-TOT(26:) 
+037900*    MOVE  KNPG-ENTRADA                  TO WS-CONTENIDO-TOT(52:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           IF KNPG-OPCION EQUAL SPACES OR LOW-VALUES                    
+              MOVE '1'                         TO KNPG-OPCION           
+           END-IF                                                       
+                                                                        
+           EXEC CICS                                                    
+                LINK PROGRAM(PGM-KN2CBMPG)                              
+                COMMAREA(KNWCBM01)                                      
+           END-EXEC                                                     
+                                                                        
+      *    DISPLAY 'OZ1CBMP2 SALE KN2CBMPG:   ' KNWCBM01                
+      *COL06-I                                                          
+037800*    MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'RETORNO KN2CBMPG:      '      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'KNPG-SALIDA:           '      TO WS-CONTENIDO-TOT(26:) 
+037900*    MOVE  KNPG-SALIDA                   TO WS-CONTENIDO-TOT(52:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+037800*    MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'RETORNO KN2CBMPG:      '      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'DATOS BASICOS:         '      TO WS-CONTENIDO-TOT(26:) 
+037900*    MOVE  KNWCBM00                      TO WS-CONTENIDO-TOT(52:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             
+              IF KNPG-S-COD-RETORNO EQUAL '0000'  OR SPACES             
+                 PERFORM 201-FMT-SALIDA-OKI-PER                         
+              ELSE                                                      
+                 PERFORM 202-FMT-SALIDA-ERR                             
+                 PERFORM 998-FINAL                                      
+              END-IF                                                    
+           ELSE                                                         
+              MOVE '0080'                    TO KNPG-S-COD-RETORNO      
+              MOVE 'PROGRAMA APLICATIVO'     TO KNPG-S-UBI-ERROR        
+              MOVE 'RETORNO NO OK'           TO KNPG-S-DET-MSG(1:15)    
+              MOVE  EIBRESP                  TO KNPG-S-DET-MSG(17:)     
+                                                                        
+              PERFORM 202-FMT-SALIDA-ERR                                
+              PERFORM 998-FINAL                                         
+           END-IF                                                       
+           .                                                            
+124700*----------------------------------------------------------------*
+124800*                   201-FMT-SALIDA-OKI-PER                       *
+124800* ESCRIBE FORMATO CON LOS DATOS PRINCIPALES DEL CLIENTE          *
+124900*----------------------------------------------------------------*
+       201-FMT-SALIDA-OKI-PER.                                          
+      *                                                                 
+           MOVE '0000'                     TO KNPG-S-COD-RETORNO        
+           MOVE SPACES                     TO KNPG-S-UBI-ERROR          
+                                              KNPG-S-DET-MSG            
+      *                                                                 
+           MOVE SPACES                     TO PGS-SALIDA-VARIABLE       
+           MOVE KNPG-TIPO-ID               TO PGS-TIPID                 
+           MOVE KNPG-NUMERO-IDE            TO PGS-NUMERO-ID             
+           MOVE KNPG-NUMERO-CLI            TO PGS-NUMERO-CLI            
+           MOVE KNPG-NOMBRE                TO PGS-NOMBRE-CLI            
+           MOVE KNPG-SEXO                  TO PGS-SEXO                  
+           MOVE KNPG-EMAIL                 TO PGS-EMAIL .               
+      *                                                                 
+037500*----------------------------------------------------------------*
+037500*    SEGUNDA PARTE DEL PROCESO DE POSICION GLOBAL          *      
+ 37500* LISADO DE ASUNTOS POR CLIENTE, TOMA EL SENSO DE ASUNTOS DE LA  *
+ 37500* PRIMERA PARTE, BUSCA LOS DATOS DE CADA ASUNTO, ACTUALIZA LOS  * 
+ 37500* DATOS Y ESCRIBE FORMATO CON LOS ASUNTOS QUE CUMPLAN CON TODAS * 
+ 37500* LAS VALIDCIONES DE LA APLICACION            *                   
+037500*----------------------------------------------------------------*
+037600 020-SEGUNDA-PARTE.                                               
+      *COL06-I                                                          
+037800*    MOVE '0001'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'INICIO PROCESO PG  *** '      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'SEGUNDA PARTE  ***     '      TO WS-CONTENIDO-TOT(26:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+037800*    MOVE '020-'                         TO WS-CONTENIDO-IND      
+037900*    MOVE 'INICIO PROCESO PG      '      TO WS-CONTENIDO-TOT      
+037900*    MOVE 'COLA TEMPORALY ST:     '      TO WS-CONTENIDO-TOT(26:) 
+037900*    MOVE 'DATOS DE ENTRADA:      '      TO WS-CONTENIDO-TOT(65:) 
+037900*    MOVE  KNPG-COLA-TS-OK               TO WS-CONTENIDO-TOT(52:) 
+037900*    MOVE  KNBM00E                       TO WS-CONTENIDO-TOT(90:) 
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+NJM01 *    INITIALIZE                             KNWCBM01              
+NJM01 *                                           KNWCBM00              
+      *CREA  COLA TS PARA EL CONTROL DE LOS DATOS DEL SENSO DE ASUNTOS  
+      *DE LA SEGUNDA PARTE DE LA APLICACION                             
+                                                                        
+           MOVE 'KN'                          TO KNPG-COLA-TS-OK(1:2)   
+           MOVE CAA-TERMINAL                  TO KNPG-COLA-TS-OK(3:4)   
+           MOVE 'OK'                          TO KNPG-COLA-TS-OK(7:2)   
+           MOVE BM10-NUMCLIEN                 TO KNPG-COLA-TS-OK(9:8)   
+                                                                        
+           MOVE KNPG-COLA-TS-OK               TO KNPG-COLA-TS-ER        
+           MOVE 'ER'                          TO KNPG-COLA-TS-ER(7:2)   
+                                                                        
+           MOVE BM10-NUMCLIEN                  TO KNPG-NUMERO-CL        
+           MOVE BM10-TIP-ID                    TO KNPG-TIPOID           
+           MOVE BM10-NUM-ID                    TO KNPG-NUMERO-ID        
+           MOVE BM10-IND-MAS-E                 TO KNPG-IND-PAGINA-E     
+           MOVE BM10-TOTAL                     TO KNPG-TOTAL            
+           MOVE BM10-CANAL                     TO KNPG-CANAL            
+           MOVE BM10-SUBCANAL                  TO KNPG-SCANAL           
+           MOVE BM10-TIP-PRODUCTO              TO KNPG-PRODUCTO         
+           MOVE BM10-OPCION                    TO KNPG-OPCION           
+      *NJM01-INI                                                        
+      *COL03-I                                                          
+      *    MOVE DATOS-NUMCLIEN                 TO KNPG-NUMERO-CL        
+      *    MOVE DATOS-CODIDENT                 TO KNPG-TIPOID           
+      *    MOVE DATOS-CLAIDENT                 TO KNPG-NUMERO-ID        
+      *COL03-F                                                          
+      *NJM01-FIN                                                        
+           MOVE CAA-ENTIDAD                    TO KNPG-CAA-ENTIDAD      
+           MOVE CAA-TERMINAL                   TO KNPG-CAA-TERMINAL     
+           MOVE CAA-CODTRAN                    TO KNPG-CAA-CODTRAN      
+           MOVE CAA-FECHA-OPER2                TO KNPG-CAA-FECHA-OPER2  
+           MOVE CAA-FECHA-CONT2                TO KNPG-CAA-FECHA-CONT2  
+           MOVE CAA-HORA-TRANS                 TO KNPG-CAA-HORA-TRANS   
+           MOVE CAA-HORA-TRANSED               TO KNPG-CAA-HORA-TRANSED 
+           MOVE CAA-USERID                     TO KNPG-CAA-USERID       
+      *COL06-I                                                          
+      *    MOVE '020-'                         TO WS-CONTENIDO-IND      
+      *    MOVE 'INICIO PROCESO PG      '      TO WS-CONTENIDO-TOT      
+      *    MOVE 'COLA TEMPORALY ST:     '      TO WS-CONTENIDO-TOT(26:) 
+      *    MOVE 'DATOS DE ENTRADA:      '      TO WS-CONTENIDO-TOT(65:) 
+      *    MOVE  KNPG-COLA-TS-OK               TO WS-CONTENIDO-TOT(52:) 
+      *    MOVE  KNBM00E                       TO WS-CONTENIDO-TOT(90:) 
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+      *    EXEC CICS                                                    
+      *         LINK PROGRAM(PGM-KN2CBMP1)                              
+      *         COMMAREA(KNWCBM01)                                      
+      *    END-EXEC                                                     
+                                                                        
+           EXEC CICS                                                    
+                LINK PROGRAM(PGM-KN2CBMPA)                              
+                COMMAREA(KNWCBM01)                                      
+           END-EXEC                                                     
+      *COL06-F                                                          
+                                                                        
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             
+              IF KNPG-S-COD-RETORNO EQUAL '0000'                        
+                 PERFORM 201-FMT-SALIDA-OKI                             
+                 PERFORM 203-FMT-SALIDA-OKI-ER                          
+              ELSE                                                      
+                 PERFORM 202-FMT-SALIDA-ERR                             
+              END-IF                                                    
+           ELSE                                                         
+              MOVE '0080'                    TO KNPG-S-COD-RETORNO      
+              MOVE 'PROGRAMA APLICATIVO'     TO KNPG-S-UBI-ERROR        
+              MOVE 'RETORNO NO OK'           TO KNPG-S-DET-MSG(1:15)    
+              MOVE  EIBRESP                  TO KNPG-S-DET-MSG(17:)     
+                                                                        
+              PERFORM 202-FMT-SALIDA-ERR                                
+           END-IF                                                       
+           .                                                            
+124700*----------------------------------------------------------------*
+124800*                    201-FMT-SALIDA-OKI                          *
+124900*----------------------------------------------------------------*
+       201-FMT-SALIDA-OKI.                                              
+      *                                                                 
+           PERFORM 2011-FMT-SAL-BASIC                                   
+      *                                                                 
+           SET SI-DATO                    TO TRUE                       
+           MOVE 1                         TO WS-ITEM-TS                 
+           MOVE SPACES                    TO WS-DATOS-SAL-REG           
+      *                                                                 
+           PERFORM UNTIL NO-DATO                                        
+                                                                        
+              EXEC CICS READQ TS                                        
+                QNAME(KNPG-COLA-TS-OK)                                  
+                INTO(WS-DATOS-SAL-REG)                                  
+                ITEM(WS-ITEM-TS)                                        
+                NOHANDLE                                                
+              END-EXEC                                                  
+                                                                        
+              IF EIBRESP EQUAL (DFHRESP(NORMAL))                        
+                 MOVE WS-DATOS-SAL-REG TO P1S-SALIDA-VARIABLE           
+                 MOVE SPACES           TO WS-DATOS-SAL-REG              
+                 ADD   1               TO WS-ITEM-TS                    
+                 PERFORM 201-GRABA-SALIDA-OKI                           
+              ELSE                                                      
+                 SET NO-DATO           TO TRUE                          
+              END-IF                                                    
+           END-PERFORM                                                  
+           .                                                            
+      *----------------------------------------------------------------*
+      *                    201-GRABA-SALIDA-OKI                        *
+      *----------------------------------------------------------------*
+       201-GRABA-SALIDA-OKI.                                            
+                                                                        
+           MOVE '0000'                      TO KNPG-S-COD-RETORNO       
+           MOVE SPACES                      TO KNPG-S-UBI-ERROR         
+                                               KNPG-S-DET-MSG           
+      *                                                                 
+           MOVE SPACES                      TO WS-CONTENIDO-DC1         
+           MOVE LENGTH OF P1S-SALIDA-VARIABLE  TO WS-LONG-DC1           
+           MOVE 'KNPSOP1'                   TO WS-NOMBRE-FORMATO        
+           MOVE P1S-SALIDA-VARIABLE         TO WS-CONT-FORMATO          
+                                                                        
+           MOVE '+DC1'                      TO WS-PREFIJO-DC1           
+           MOVE CAA-TERMINAL                TO WS-SUFIJO-DC1            
+           MOVE '+DC1'                      TO CAA-DESTINO(1)           
+           MOVE 'P'                         TO CAA-IND-PANDOC(1)        
+           ADD  +8                          TO WS-LONG-DC1              
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '201-'                     TO WS-CONTENIDO-IND         
+            MOVE 'ERROR GRABANDO +DC1'      TO WS-CONTENIDO-TOT         
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+           .                                                            
+124700*----------------------------------------------------------------*
+124800*                    2011-FMT-SAL-BASIC                          *
+124800*   GRABA FORMATOS DE SALIDA CON DATOS DE PAGINACION Y BASICOS   *
+124900*----------------------------------------------------------------*
+       2011-FMT-SAL-BASIC.                                              
+                                                                        
+      * GRABA FORMATO DATOS BASICOS                                     
+      *                                                                 
+           MOVE ZEROS                      TO WS-VAR-NUM-2              
+                                              WS-VAR-NUM-3              
+           MOVE KNPG-IND-PAGINA-S          TO WS-VAR-NUM-2              
+           MOVE WS-VAR-NUM-2               TO P1S-INDIC-MAS-S           
+           MOVE KNPG-S-CANT-REG            TO WS-VAR-NUM-3              
+           MOVE WS-VAR-NUM-3               TO P1S-TOTAL-ENV             
+038200                                                                  
+           MOVE LENGTH OF P1S-SALIDA-BASICOS TO WS-LONG-DC1             
+           MOVE P1S-SALIDA-BASICOS         TO WS-CONT-FORMATO           
+           MOVE 'KNPS01B'                  TO WS-NOMBRE-FORMATO         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '201-'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 1'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+      *                                                                 
+      * GRABA FORMATO DATOS FIJOS                                       
+      *                                                                 
+           MOVE ZEROES                     TO P1S-COD-RESPUESTA         
+           MOVE SPACES                     TO P1S-COD-ERROR             
+           MOVE KNPG-S-DET-MSG(1:20)       TO P1S-VALOR-ERROR-UNO       
+03820                                                                   
+           MOVE LENGTH OF P1S-SALIDA-FIJA  TO WS-LONG-DC1               
+           MOVE P1S-SALIDA-FIJA            TO WS-CONT-FORMATO           
+           MOVE 'KNPS01F'                  TO WS-NOMBRE-FORMATO         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *    DISPLAY 'ESCRIBE COLA IN2:   ' WS-TS '  ' WS-NOMBRE-FORMATO  
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '201-'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 2'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+      *                                                                 
+      * GRABA FORMATO PARA SALIDA DATOS BASICOS DEL CLIENTE             
+      *                                                                 
+           MOVE SPACES                     TO WS-CONT-FORMATO           
+           MOVE LENGTH OF PGS-SALIDA-VARIABLE TO WS-LONG-DC1            
+      *NOVA01-I                                                         
+      *    MOVE PGS-SALIDA-VARIABLE        TO WS-CONT-FORMATO           
+      *    MOVE 'KNPSOPG'                  TO WS-NOMBRE-FORMATO         
+           MOVE PGS-SALIDA-VARIABLE        TO WS-CONT-FORMAT2           
+           MOVE 'KNPSOPG'                  TO WS-NOMBRE-FORMAT2         
+      *NOVA01-I                                                         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+      *    MOVE 'SPG0'                    TO WS-CONTENIDO-IND           
+      *    MOVE 'FORMATO BASICOS DEL CLIENTE:  ' TO WS-CONTENIDO-TOT    
+      *    MOVE '|'                       TO WS-CONTENIDO-TOT(31:1)     
+      *    MOVE  WS-LONG-DC1              TO WS-CONTENIDO-TOT(33:)      
+      *    MOVE '|'                       TO WS-CONTENIDO-TOT(38:1)     
+      *    MOVE  WS-CONTENIDO-DC1         TO WS-CONTENIDO-TOT(40:)      
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+      *NOVA01-I                                                         
+      *       FROM(WS-CONTENIDO-DC1)                                    
+              FROM(WS-CONTENIDO-DC2)                                    
+      *NOVA01-F                                                         
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '0001'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 3'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF.                                                      
+038200*                                                                 
+124700*----------------------------------------------------------------*
+124800*                       202-FMT-SALIDA-ERR                       *
+124900*----------------------------------------------------------------*
+       202-FMT-SALIDA-ERR.                                              
+                                                                        
+      *                                                                 
+      * GRABA FORMATO DATOS BASICOS CUANDO SE PRESENTA ERROR            
+      *                                                                 
+           MOVE ZEROS                      TO P1S-INDIC-MAS-S           
+                                              P1S-TOTAL-ENV             
+038200                                                                  
+           MOVE LENGTH OF P1S-SALIDA-BASICOS TO WS-LONG-DC1             
+           MOVE P1S-SALIDA-BASICOS         TO WS-CONT-FORMATO           
+           MOVE 'KNPS01B'                  TO WS-NOMBRE-FORMATO         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '201-'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 1'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+      *                                                                 
+      * GRABA FORMATO DATOS FIJOS CUANDO SE PRESENTA ERROR              
+      *                                                                 
+           MOVE KNPG-S-COD-RETORNO(3:2)    TO P1S-COD-RESPUESTA         
+           MOVE KNPG-S-UBI-ERROR(1:7)      TO P1S-COD-ERROR             
+           MOVE KNPG-S-UBI-ERROR(8:20)     TO P1S-VALOR-ERROR-UNO       
+03820                                                                   
+           MOVE LENGTH OF P1S-SALIDA-FIJA  TO WS-LONG-DC1               
+           MOVE P1S-SALIDA-FIJA            TO WS-CONT-FORMATO           
+           MOVE 'KNPS01F'                  TO WS-NOMBRE-FORMATO         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '201-'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 2'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+      *                                                                 
+      * GRABA SALIDA PARA DATOS BASICOS CUANDO SE PRESENTA ERROR        
+      *                                                                 
+           MOVE SPACES                     TO PGS-SALIDA-VARIABLE       
+           MOVE KNPG-TIPO-ID               TO PGS-TIPID                 
+           MOVE KNPG-NUMERO-IDE            TO PGS-NUMERO-ID             
+           MOVE KNPG-NUMERO-CLI            TO PGS-NUMERO-CLI            
+           MOVE KNPG-NOMBRE                TO PGS-NOMBRE-CLI            
+           MOVE KNPG-SEXO                  TO PGS-SEXO                  
+           MOVE KNPG-EMAIL                 TO PGS-EMAIL                 
+      *                                                                 
+           MOVE SPACES                     TO WS-CONT-FORMATO           
+           MOVE LENGTH OF PGS-SALIDA-VARIABLE TO WS-LONG-DC1            
+      *NOVA01-I                                                         
+      *    MOVE PGS-SALIDA-VARIABLE        TO WS-CONT-FORMATO           
+      *    MOVE 'KNPSOPG'                  TO WS-NOMBRE-FORMATO         
+           MOVE PGS-SALIDA-VARIABLE        TO WS-CONT-FORMAT2           
+           MOVE 'KNPSOPG'                  TO WS-NOMBRE-FORMAT2         
+      *NOVA01-F                                                         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+      *    MOVE 'EPG0'                    TO WS-CONTENIDO-IND           
+      *    MOVE 'FORMATO BASICOS DEL CLIENTE:  ' TO WS-CONTENIDO-TOT    
+      *    MOVE '|'                       TO WS-CONTENIDO-TOT(31:1)     
+      *    MOVE  WS-LONG-DC1              TO WS-CONTENIDO-TOT(33:)      
+      *    MOVE '|'                       TO WS-CONTENIDO-TOT(38:1)     
+      *    MOVE  WS-CONTENIDO-DC1         TO WS-CONTENIDO-TOT(40:)      
+      *    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *                                                                 
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL06-F                                                          
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+      *NOVA01-I                                                         
+      *       FROM(WS-CONTENIDO-DC1)                                    
+              FROM(WS-CONTENIDO-DC2)                                    
+      *NOVA01-F                                                         
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '0001'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1 3'   TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF                                                       
+      *                                                                 
+      * GRABA SALIDA VARIABLE CUANDO SE PRESENTA ERROR                  
+      *                                                                 
+           MOVE SPACES                     TO P1S-SALIDA-VARIABLE       
+           MOVE KNPG-S-COD-RETORNO         TO P1S-SALIDA-VARIABLE(1:4)  
+           MOVE KNPG-S-UBI-ERROR           TO P1S-SALIDA-VARIABLE(6:30) 
+           MOVE KNPG-S-DET-MSG             TO P1S-SALIDA-VARIABLE(37:30)
+                                                                        
+           MOVE '|'                        TO P1S-SALIDA-VARIABLE(5:1)  
+                                              P1S-SALIDA-VARIABLE(36:1) 
+                                              P1S-SALIDA-VARIABLE(66:1) 
+                                                                        
+           MOVE LENGTH OF P1S-SALIDA-VARIABLE TO WS-LONG-DC1            
+           MOVE P1S-SALIDA-VARIABLE        TO WS-CONT-FORMATO           
+           MOVE 'KNPSOPG'                  TO WS-NOMBRE-FORMATO         
+           MOVE '+DC1'                     TO WS-PREFIJO-DC1            
+           MOVE CAA-TERMINAL               TO WS-SUFIJO-DC1             
+           MOVE '+DC1'                     TO CAA-DESTINO(1)            
+           MOVE 'P'                        TO CAA-IND-PANDOC(1)         
+           ADD  +8                         TO WS-LONG-DC1               
+      *COL06-I                                                          
+037800*    MOVE '6666'                      TO WS-CONTENIDO-IND         
+037900*    MOVE 'DATOS FORMATO DE SALIDA:'  TO WS-CONTENIDO-TOT(1:24)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(25:3)   
+037900*    MOVE  WS-NOMBRE-FORMATO          TO WS-CONTENIDO-TOT(28:8)   
+037900*    MOVE ' | '                       TO WS-CONTENIDO-TOT(36:3)   
+037900*    MOVE  WS-CONTENIDO-DC1           TO WS-CONTENIDO-TOT(39:)    
+038100*    PERFORM 31-ESCRIBE-COLA-TS                                   
+      *COL6-F                                                           
+           EXEC CICS                                                    
+              WRITEQ TS QUEUE(WS-TS)                                    
+              FROM(WS-CONTENIDO-DC1)                                    
+              LENGTH(WS-LONG-DC1)                                       
+              MAIN NOHANDLE                                             
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+            MOVE '202-'                    TO WS-CONTENIDO-IND          
+            MOVE 'ERROR GRABANDO +DC1'     TO WS-CONTENIDO-TOT          
+            PERFORM 31-ESCRIBE-COLA-TS                                  
+           END-IF.                                                      
+      *                                                                 
+124700*----------------------------------------------------------------*
+124800*      RUTINA FINAL DEL PROGRAMA                                 *
+124900*----------------------------------------------------------------*
+125000 998-FINAL.                                                       
+                                                                        
+           IF KNPG-S-COD-RETORNO NOT EQUAL SPACES AND                   
+              KNPG-S-COD-RETORNO NOT EQUAL '0000'                       
+                                                                        
+              MOVE '0998'                         TO WS-CONTENIDO-IND   
+              MOVE KNPG-S-RETORNO                 TO WS-CONTENIDO-TOT   
+              PERFORM 31-ESCRIBE-COLA-TS                                
+           END-IF                                                       
+                                                                        
+           PERFORM 999-BORRAR-TS                                        
+      *                                                                 
+      *COL02-I                                                          
+      *    PERFORM 2500-MONITOR-PLUS                                    
+      *COL02-F                                                          
+      *                                                                 
+125100     EXEC CICS                                                    
+125200        RETURN                                                    
+125300     END-EXEC.                                                    
+125400*                                                                 
+124700*----------------------------------------------------------------*
+124800* RUTINA  PARA BORRAR COLAS TS QUE SE USARON PARA PASO DE DATOS  *
+124900*----------------------------------------------------------------*
+125000 999-BORRAR-TS.                                                   
+      *    IF NO-ESCRIBE                                                
+      *BORRA COLA TS DE DATOS OK DE POSICION GLOBAL                     
+                                                                        
+              EXEC CICS                                                 
+                   DELETEQ TS                                           
+                   QNAME(KNPG-COLA-TS-OK)                               
+                   NOHANDLE                                             
+              END-EXEC                                                  
+                                                                        
+      *BORRA COLA TS DE DATOS ERROR DE POSICION GLOBAL                  
+                                                                        
+              EXEC CICS                                                 
+                   DELETEQ TS                                           
+                   QNAME(KNPG-COLA-TS-ER)                               
+                   NOHANDLE                                             
+              END-EXEC                                                  
+      *BORRA COLA TS DE TRAZA DE PROGRAMA                               
+              EXEC CICS                                                 
+                   DELETEQ TS                                           
+                   QNAME(WS-NOMBRE-COLA-TS)                             
+                   NOHANDLE                                             
+              END-EXEC                                                  
+           .                                                            
+      *----------------------------------------------------------------*
+      *                     203-FMT-SALIDA-OKI-ER                      *
+      *ESCRIBE FMT 3 CON EL LISTADO DE ERRORES DEL PROGRAMA APLICATIVO *
+      *----------------------------------------------------------------*
+       203-FMT-SALIDA-OKI-ER.                                           
+                                                                        
+           SET SI-DATO-ER                 TO TRUE                       
+           MOVE 1                         TO WS-ITEM-TS-ER              
+           MOVE SPACES                    TO ERR-DATOS-SAL-ER           
+      *                                                                 
+           PERFORM UNTIL NO-DATO-ER                                     
+                                                                        
+              EXEC CICS READQ TS                                        
+                QNAME(KNPG-COLA-TS-ER)                                  
+                INTO(ERR-DATOS-SAL-ER)                                  
+                ITEM(WS-ITEM-TS-ER)                                     
+                NOHANDLE                                                
+              END-EXEC                                                  
+                                                                        
+              IF EIBRESP EQUAL (DFHRESP(NORMAL))                        
+                                                                        
+                 MOVE SPACES              TO WS-CONT-FORMATO            
+                                             P1S-SALIDA-VARIABLE        
+                 ADD   1                  TO WS-ITEM-TS-ER              
+                                                                        
+                 MOVE '|'                 TO P1S-TIPO-CONTRATO(6:1)     
+                                             P1S-TIPO-CONTRATO(16:1)    
+                 MOVE ERR-COD-ERR1        TO P1S-TIPO-PRODUCTO          
+                 MOVE ERR-COD-ERR2        TO P1S-TIPO-CONTRATO(1:4)     
+                 MOVE ERR-COD-ERR3        TO P1S-TIPO-CONTRATO(8:9)     
+                 MOVE ERR-DES-ERR1        TO P1S-NUM-CONTRATO           
+                 MOVE ERR-DES-ERR2        TO P1S-ALIAS                  
+                                                                        
+                 MOVE LENGTH OF P1S-SALIDA-VARIABLE                     
+                                          TO WS-LONG-DC1                
+                 MOVE P1S-SALIDA-VARIABLE TO WS-CONT-FORMATO            
+                 MOVE 'KNPSOP1'           TO WS-NOMBRE-FORMATO          
+                 MOVE '+DC1'              TO WS-PREFIJO-DC1             
+                 MOVE CAA-TERMINAL        TO WS-SUFIJO-DC1              
+                 MOVE '+DC1'              TO CAA-DESTINO(1)             
+                 MOVE 'P'                 TO CAA-IND-PANDOC(1)          
+                 ADD  +8                  TO WS-LONG-DC1                
+      *COL06-I                                                          
+037800*          MOVE '6666'              TO WS-CONTENIDO-IND           
+037900*          MOVE 'DATOS FORMATO DE SALIDA:'                        
+037900*                                   TO WS-CONTENIDO-TOT(1:24)     
+037900*          MOVE ' | '               TO WS-CONTENIDO-TOT(25:3)     
+037900*          MOVE  WS-NOMBRE-FORMATO  TO WS-CONTENIDO-TOT(28:8)     
+037900*          MOVE ' | '               TO WS-CONTENIDO-TOT(36:3)     
+037900*          MOVE  WS-CONTENIDO-DC1   TO WS-CONTENIDO-TOT(39:)      
+038100*          PERFORM 31-ESCRIBE-COLA-TS                             
+      *COL06-F                                                          
+                 EXEC CICS                                              
+                   WRITEQ TS QUEUE(WS-TS)                               
+                   FROM(WS-CONTENIDO-DC1)                               
+                   LENGTH(WS-LONG-DC1)                                  
+                   MAIN NOHANDLE                                        
+                 END-EXEC                                               
+                                                                        
+              ELSE                                                      
+                 SET NO-DATO-ER           TO TRUE                       
+              END-IF                                                    
+              MOVE SPACES                 TO ERR-DATOS-SAL-ER           
+           END-PERFORM                                                  
+           .                                                            
+      *----------------------------------------------------------------*
+      *                       31-ESCRIBE-COLA-TS                       *
+      *       ESCRIBE COLA TS DE LOG PARA VALIDAR FUNCIONAMIENTO       *
+      *----------------------------------------------------------------*
+       31-ESCRIBE-COLA-TS.                                              
+      *COL04-I                                                          
+      *     CONTINUE .                                                  
+            IF ESCM-IND-TRACE = 'A'                                     
+               MOVE LENGTH OF WS-CONTENIDO-TS    TO WS-LONG-TS          
+                                                                        
+               EXEC CICS WRITEQ TS                                      
+                  QUEUE  (WS-NOMBRE-COLA-TS)                            
+                  FROM   (WS-CONTENIDO-TS)                              
+                  LENGTH (WS-LONG-TS)                                   
+                  NOHANDLE                                              
+               END-EXEC                                                 
+                                                                        
+               MOVE SPACES                       TO WS-CONTENIDO-TS     
+               MOVE '-'                          TO WS-CONTENIDO-FILL   
+            END-IF.                                                     
+      *COL04-F                                                          
+      *VYGTS-INI                                                        
+      *     IF SI-ESCRIBE                                               
+      *     IF CAA-CICS NOT = 'P'                                       
+      *        MOVE LENGTH OF WS-CONTENIDO-TS    TO WS-LONG-TS          
+      *                                                                 
+      *        EXEC CICS WRITEQ TS                                      
+      *           QUEUE  (WS-NOMBRE-COLA-TS)                            
+      *           FROM   (WS-CONTENIDO-TS)                              
+      *           LENGTH (WS-LONG-TS)                                   
+      *           NOHANDLE                                              
+      *        END-EXEC                                                 
+      *                                                                 
+      *        MOVE SPACES                       TO WS-CONTENIDO-TS     
+      *        MOVE '-'                          TO WS-CONTENIDO-FILL   
+      *     END-IF.                                                     
+      *VYGTS-FIN                                                        
+      ******************************************************************
+      *                 2500-MONITOR-PLUS                              *
+      ******************************************************************
+      *                                                                 
+      *COL02-I                                                          
+      *2500-MONITOR-PLUS.                                               
+      *    INITIALIZE CNWCMP01-01                                       
+      *                                                                 
+      *    PERFORM 2510-DETERMINA-USUARIO-MQ                            
+      *    MOVE 'BYTEI'                    TO MP00-CONBYTEI             
+      *    MOVE 'N'                        TO MP00-CONSTANN             
+      *    MOVE CAA-FECHA-OPER2(9:2)       TO MP00-DIATRANS             
+      *    MOVE CAA-FECHA-OPER2(6:2)       TO MP00-MESTRANS             
+      *    MOVE CAA-FECHA-OPER2(1:4)       TO MP00-ANIOTRAN             
+      *    MOVE CAA-HORA-TRANS(1:2)        TO MP00-HORTRANS             
+      *    MOVE CAA-HORA-TRANS(3:2)        TO MP00-MINTRANS             
+      *    MOVE '00009'                    TO MP00-CONSTANT             
+      *    MOVE 'BIN'                      TO MP00-CONSTBIN             
+      *    MOVE 'BYTEF'                    TO MP00-CONBYTEF             
+      *    MOVE BM10-CANAL                 TO MP00-CANALTRS             
+      *    MOVE 'OZP2'                     TO MP00-CODIGOPE             
+      *    MOVE CAA-FECHA-OPER2            TO MP00-FECHAOPR             
+      *    MOVE CAA-FECHA-CONT2            TO MP00-FCHCBALT             
+      *    MOVE CAA-HORA-TRANS             TO MP00-HORAOPER             
+      *    MOVE ZEROS                      TO MP00-IMPORTOP             
+      *    MOVE CAA-COD-ERROR              TO MP00-CODRESOP             
+      *    MOVE BM10-PRODUCTO              TO MP00-NUMPROD              
+      *    MOVE BM10-PRODUCTO(1:8)         TO MP00-CTAORGOP(1:8)        
+      *    MOVE BM10-PRODUCTO(11:)         TO MP00-CTAORGOP(9:)         
+      *    MOVE BM10-PRODUCTO(1:4)         TO MP00-ENTIDAD              
+      *    MOVE BM10-PRODUCTO(5:4)         TO MP00-OFICINA              
+      *    MOVE BM10-PRODUCTO(11:2)        TO MP00-PRODUCTO             
+      *    MOVE BM10-PRODUCTO(13:)         TO MP00-NUMECTA              
+      *    MOVE BM10-NUMCLIEN              TO MP00-NMCLOROP             
+      *                                       MP00-CODCLI               
+      *    MOVE SPACES                     TO MP00-NUMTELOP             
+      *                                       MP00-NUMTJOPR             
+      *    MOVE SPACES                     TO MP00-CDOFGSTO             
+      *    MOVE SPACES                     TO MP00-IDCLIOPR             
+      *                                       MP00-DIRCLINT             
+      *                                       MP00-TELCONTC             
+      *                                       MP00-TELCONTC2            
+      *                                       MP00-TELCONTC3            
+      *    MOVE SPACES                     TO MP00-DIRALTCLI            
+      *    MOVE SPACES                     TO MP00-NOMBRECL             
+      *    MOVE SPACES                     TO MP00-DIRECCIP             
+      *    MOVE SPACES                     TO MP00-CLAINTER             
+      *    MOVE SPACES                     TO MP00-SECINTER             
+      *    MOVE ZEROES                     TO MP00-COCONVEN             
+      *    MOVE SPACES                     TO MP00-NUREFERE             
+      *    MOVE ZEROES                     TO MP00-SALDODISP            
+      *    MOVE ZEROES                     TO MP00-GRUPOTRX             
+      *    MOVE SPACES                     TO MP00-SUBPROD              
+      *    MOVE SPACES                     TO MP00-NUMTRX               
+      *                                       MP00-CODRECHAZO           
+      *    MOVE SPACES                     TO MP00-REVERSO              
+      *    MOVE SPACES                     TO MP00-MONEDA               
+      *    MOVE ZEROES                     TO MP00-EFECTIVO             
+      *    MOVE ZEROES                     TO MP00-CHQPROP              
+      *    MOVE ZEROES                     TO MP00-CHQAJEN              
+      *    MOVE SPACES                     TO MP00-TIPCHQ               
+      *                                       MP00-NUMCHQ               
+      *    MOVE SPACES                     TO MP00-FLAGORIGEN           
+      *    MOVE SPACES                     TO MP00-FLAGDEST             
+      *                                       MP00-OPERA                
+      *    MOVE SPACES                     TO MP00-STATUS               
+      *    MOVE SPACES                     TO MP00-CHQCOMPEN            
+      *    MOVE SPACES                     TO MP00-LIBRE2               
+      *    MOVE ZEROES                     TO MP00-FEAPER               
+      *    MOVE CAA-TERMINAL               TO MP00-TERMINAL             
+      *    MOVE SPACES                     TO MP00-CODCLIDEST           
+      *    MOVE CAA-USERID                 TO MP00-USERID               
+      *    MOVE SPACES                     TO MP00-USEREMPLEA           
+      *    MOVE ZEROES                     TO MP00-SOBREGIRO            
+      *    MOVE SPACES                     TO MP00-INDSOBREG            
+      *    MOVE SPACES                     TO MP00-TIPCTA               
+      *                                       MP00-INTERNET             
+      *                                       MP00-DOMICILIO            
+      *                                       MP00-NOMDEST              
+      *    MOVE SPACES                     TO MP00-EMAIL                
+      *    MOVE ZEROS                      TO MP00-FEVINCULA            
+      *    MOVE SPACES                     TO MP00-LOCALIDAD            
+      *    MOVE SPACES                     TO MP00-SERVICIO             
+      *                                       MP00-TIPOLOCAL            
+      *                                       MP00-FRAUDE               
+      *                                       MP00-ORIGEN               
+      *                                       MP00-IDENTFRD             
+      *    MOVE SPACES                     TO MP00-LIBRE1               
+      *    MOVE SPACES                     TO MP00-LIBRE6               
+      *    MOVE SPACES                     TO MP00-LIBRE5               
+      *    MOVE ZEROES                     TO MP00-DOLAR                
+      *                                       MP00-CTAACH               
+      *                                       MP00-TRXORIGDEST          
+      *                                       MP00-RANGO                
+      *                                       MP00-COINCID              
+      *                                       MP00-LIBRE3               
+      *                                       MP00-LIBRE4               
+      *    MOVE ZEROES                     TO MP00-LIBRE7               
+      *    MOVE SPACES                     TO MP00-LIBRE8               
+      *    MOVE SPACES                     TO MP00-CTADESOP             
+      *    MOVE SPACES                     TO MP00-CDOFGSTD             
+      *    MOVE SPACES                     TO MP00-CTADEST              
+      *    MOVE 1                          TO MP00-VALOR1               
+      *                                                                 
+      *    MOVE LENGTH OF CNWCMP01-01      TO W-LONGITUD-AREA           
+      *    MOVE 1006                       TO W-LONGITUD-AREA           
+      *    IF CAA-CICS(1:1) NOT EQUAL 'F' AND                           
+      *       CAA-CICS(1:1) NOT EQUAL 'T'                               
+      *       EXEC CICS                                                 
+      *         START TRANSID('KTM2')                                   
+      *         USERID (W-USUARIO-MQ)                                   
+      *         FROM(CNWCMP01-01)                                       
+      *         LENGTH(W-LONGITUD-AREA)                                 
+      *         SYSID(W-AOR)                                            
+      *       END-EXEC                                                  
+      *    END-IF.                                                      
+      ******************************************************************
+      *                  2510-DETERMINA-USUARIO-MQ                     *
+      ******************************************************************
+      *2510-DETERMINA-USUARIO-MQ.                                       
+      *    EVALUATE CAA-CICS(1:1)                                       
+      *       WHEN 'D'                                                  
+      *       WHEN 'M'                                                  
+      *          MOVE 'UCQGMSCD'      TO W-USUARIO-MQ                   
+      *          MOVE 'DA01'          TO W-AOR                          
+      *       WHEN 'Q'                                                  
+      *       WHEN 'C'                                                  
+      *          MOVE 'UCQGMSCC'      TO W-USUARIO-MQ                   
+      *          MOVE 'QC12'          TO W-AOR                          
+      *       WHEN OTHER                                                
+      *          MOVE 'UCQGMSCP'      TO W-USUARIO-MQ                   
+      *          MOVE 'PC21'          TO W-AOR                          
+      *    END-EVALUATE.                                                
+      *COL02-F                                                          
+      * NJM01-I                                                         
+      ***************************************************************** 
+      * PROCESO QUE VALIDA EL NOMBRE Y VERIFICA QUE NO TENGA UNA      * 
+      * CARACTER EXTRA#O O BASURA                                     * 
+      ***************************************************************** 
+       110-VALIDA-NOMBRE.                                               
+           INSPECT WS-NOMBRE-COMP CONVERTING                            
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ‹È‚ƒ‡ÂÍÎËÔÓÏÙ÷Ú˚˘·ÌÛ˙¶#'   
+               TO 'ABCDEFGHIJKLMNOPQRSTUVWXYZUEAAAAEEEIIIOOOUUAIOUNN'   
+                                                                        
+           INSPECT WS-NOMBRE-COMP CONVERTING                            
+                  '„¿¡¬√ƒ≈«»… ÀÃÕŒœ–“”‘’÷Ÿ⁄€‹ı¯˝ˇ'                      
+               TO 'AAAAAAACEEEEIIIIDOOOOOUUUUOOYY'                      
+                                                                        
+           INSPECT WS-NOMBRE-COMP CONVERTING                            
+                  ';|∞¨]"—$%&/()=?\ø°¥~+*®{¢[}!`<>,.:-_@Ò'              
+               TO 'N     N  Y                           N'              
+                                                                        
+           INSPECT WS-NOMBRE-COMP REPLACING ALL LOW-VALUES BY SPACES.   
+       110-FIN. EXIT.                                                   
+      *NJM01-F                                                          
+      *NJM02-INI                                                        
+      ***************************************************************** 
+      * PROCESO QUE VALIDA EL NOMBRE Y VERIFICA QUE NO TENGA UNA      * 
+      * CARACTER EXTRA#O O BASURA                                     * 
+      ***************************************************************** 
+       111-VALIDA-MAIL.                                                 
+           INSPECT WS-MAIL  CONVERTING                                  
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ‹È‚ƒ‡ÂÍÎËÔÓÏÙ÷Ú˚˘·ÌÛ˙¶#'   
+               TO 'ABCDEFGHIJKLMNOPQRSTUVWXYZUEAAAAEEEIIIOOOUUAIOUNN'   
+                                                                        
+           INSPECT WS-MAIL  CONVERTING                                  
+                  '„¿¡¬√ƒ≈«»… ÀÃÕŒœ–“”‘’÷Ÿ⁄€‹ı¯˝ˇ'                      
+               TO 'AAAAAAACEEEEIIIIDOOOOOUUUUOOYY'                      
+                                                                        
+           INSPECT WS-MAIL  CONVERTING                                  
+                  ';|∞¨]"—$%&/()=?\ø°¥~+*®{¢[}!`<>,.:-_Ò'               
+               TO 'N     N  Y                          N'               
+                                                                        
+           INSPECT WS-MAIL   REPLACING ALL LOW-VALUES BY SPACES.        
+       111-FIN. EXIT.                                                   
+      *NJM02-FIN                                                        
+      *COL04-I                                                          
+      ******************************************************************
+      *                    112-CONSULTA-ESC-CANAL                      *
+      *   CONSULTA ESPECIFICIDADES DE FUNCION CANAL                    *
+      ******************************************************************
+       112-CONSULTA-ESC-CANAL.                                          
+           INITIALIZE QCECESC                                           
+           MOVE 'ESC'                       TO ESC-TABLA                
+           MOVE CAA-CANAL                   TO ESC-CLAVE                
+           MOVE CAA-CODTRAN                 TO ESC-CLAVE(3:4)           
+      *                                                                 
+           CALL 'QC2CESC'  USING DFHEIBLK DFHCOMMAREA QCECESC           
+      *                                                                 
+           IF ESC-CODERR = SPACES                                       
+              SET ADDRESS OF QGECESCM       TO ESC-PTR-TAB              
+           END-IF                                                       
+           IF EIBRESP NOT EQUAL DFHRESP(NORMAL)                         
+              MOVE 'D'                      TO ESCM-IND-TRACE           
+           END-IF.                                                      
+      *COL04-F                                                          
+      *COL05-I                                                          
+      *----------------------------------------------------------------*
+      *                  30300-INSERTA-LOG-MOVIL                       *
+      *----------------------------------------------------------------*
+       30300-INSERTA-LOG-MOVIL.                                         
+      *                                                                 
+           INITIALIZE  OZWCLOG0                                         
+                                                                        
+           MOVE BM10-NUMCLIEN                TO OZWCLOG0-E-CNCCLIPU     
+           MOVE CAA-USERID                   TO OZWCLOG0-E-CNUSERID     
+           MOVE 'OZP2'                       TO OZWCLOG0-E-CNFUNCID     
+           MOVE 'MNET'                       TO OZWCLOG0-E-CNCNLIDA     
+           MOVE BM10-CANAL                   TO OZWCLOG0-E-CNCNLLLA     
+                                                OZWCLOG0-E-CNACCCNL     
+           MOVE CAA-COD-ERROR                TO OZWCLOG0-E-COD-ERROR    
+           MOVE CAA-NUM-SECUE-9              TO OZWCLOG0-E-NUM-SECUE    
+           MOVE CAA-HORA-TRANS-9             TO OZWCLOG0-E-CNHTRANS     
+           MOVE CAA-FECHA-OPER2              TO OZWCLOG0-E-CNFVALOR     
+           MOVE ZEROES                       TO OZWCLOG0-E-CNREFEX1(1:4)
+                                                OZWCLOG0-E-CNIOPERA     
+                                                OZWCLOG0-E-CNNTAREA     
+           MOVE SPACES                       TO OZWCLOG0-E-CNFMTPRO     
+                                                OZWCLOG0-E-CNREFINT     
+                                                OZWCLOG0-E-CNIASPRI     
+                                                OZWCLOG0-E-CNFMTASO     
+                                                OZWCLOG0-E-CNIASASO     
+                                                OZWCLOG0-E-CNCDIVIS     
+                                                OZWCLOG0-E-CNRCAPLN     
+                                                OZWCLOG0-E-CNYREVER     
+                                                OZWCLOG0-E-CNYACEPT     
+                                                OZWCLOG0-E-CNREFEX2     
+                                                OZWCLOG0-E-CNYLIB01     
+                                                OZWCLOG0-E-CNYLIB02     
+                                                OZWCLOG0-E-CNYLIB03     
+                                                OZWCLOG0-E-CNYLIB04     
+                                                OZWCLOG0-E-CNYLIB05     
+                                                OZWCLOG0-E-CNYLIB06     
+                                                OZWCLOG0-E-CNYLIB07     
+                                                OZWCLOG0-E-CNYLIB08     
+                                                OZWCLOG0-E-CNYLIB09     
+                                                OZWCLOG0-E-CNYLIB10     
+                                                                        
+           EXEC CICS                                                    
+              LINK                                                      
+              PROGRAM  (RUT-OZ1CLOG0)                                   
+              COMMAREA (REG-OZWCLOG0)                                   
+           END-EXEC                                                     
+                                                                        
+           IF EIBRESP EQUAL DFHRESP(NORMAL)                             
+              IF OZWCLOG0-S-RESPUESTA EQUAL '00'                        
+                CONTINUE                                                
+              ELSE                                                      
+                MOVE OZWCLOG0-S-COD-ERROR   TO KNPG-S-COD-RETORNO       
+                MOVE OZWCLOG0-S-DES-ERROR   TO KNPG-S-DET-MSG           
+                MOVE 'OZ1CLOG0'             TO KNPG-S-DET-MSG(12: )     
+                PERFORM 202-FMT-SALIDA-ERR                              
+              END-IF                                                    
+           ELSE                                                         
+              MOVE 'ERROR'                  TO KNPG-S-COD-RETORNO       
+              MOVE 'OZ1CLOG0'               TO KNPG-S-DET-MSG           
+              PERFORM 202-FMT-SALIDA-ERR                                
+           END-IF.                                                      
+      *COL05-F                                                          
+
